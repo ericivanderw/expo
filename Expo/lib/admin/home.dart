@@ -1,259 +1,271 @@
 import 'package:flutter/material.dart';
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class AdminHome extends StatelessWidget {
+  const AdminHome({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1E2636),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
-                    'Home',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  Icon(
-                    Icons.notifications_none_rounded,
-                    color: Colors.white,
-                    size: 48,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
 
-              // Banner
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/banner.png', // ganti path sesuai banner kamu
-                  height: 120,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(height: 16),
 
-              // Verified / Unverified
-              Row(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color.fromARGB(255, 49, 81, 117),
+              Color.fromARGB(255, 139, 139, 139),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 1,
-                    child: _statusBox(
-                      colorDot: Colors.green,
-                      label: 'Verified',
-                      value: '40 Vehicles',
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 1,
-                    child: _statusBox(
-                      colorDot: Colors.red,
-                      label: 'Unverified',
-                      value: '3 Vehicles',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Recently container (semua di dalam kotak)
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAEAEA),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Recently title + icon di dalam kotak
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: const [
-                          Text(
-                            'Recently',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Icon(
-                            Icons.refresh,
-                            color: Colors.black87,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-
-                      // List Recently
-                      Expanded(
-                        child: ListView(
-                          children: const [
-                            _recentItem(
-                              plate: 'BP1234CD',
-                              time: '19.30 • Out',
-                            ),
-                            SizedBox(height: 10),
-                            _recentItem(
-                              plate: 'BP5678EF',
-                              time: '20.30 • In',
-                            ),
-                            SizedBox(height: 10),
-                            _recentItem(),
-                            SizedBox(height: 10),
-                            _recentItem(),
-                          ],
+                  // HEADER ----------------------------------------------------
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(
+                        "Home",
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
+                      Icon(Icons.notifications_none,
+                          color: Colors.white, size: 30),
                     ],
                   ),
+
+                  const SizedBox(height: 20),
+
+                  // BANNER IMAGE ---------------------------------------------
+                  Container(
+                    height: 120,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: const DecorationImage(
+                        image: AssetImage("assets/banner.jpg"),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  // STATUS CHIP ROW -----------------------------------------
+                 Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/admin/verif');
+                        },
+                        child: buildStatusChip(
+                          label: "Verified",
+                          count: "40 Vehicles",
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/admin/verif');
+                        },
+                        child: buildStatusChip(
+                          label: "Unverified",
+                          count: "3 Vehicles",
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+
+
+                  const SizedBox(height: 25),
+
+                  // RECENTLY SECTION ----------------------------------------
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD6D6D6),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Text(
+                              "Recently",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            SizedBox(width: 5),
+                            Icon(Icons.refresh, size: 20, color: Colors.black),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+                        buildRecentItem(
+                          context,
+                          plate: "BP1234CD",
+                          time: "19.30 • Out",
+                        ),
+                        buildRecentItem(
+                          context,
+                          plate: "BP5678EF",
+                          time: "20.30 • In",
+                        ),
+                        buildRecentItem(context),
+                        buildRecentItem(context),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // Box Verified / Unverified
-  Widget _statusBox({
-    required Color colorDot,
+
+// ===========================================================================
+// STATUS CHIP
+// ===========================================================================
+  Widget buildStatusChip({
     required String label,
-    required String value,
+    required String count,
+    required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          CircleAvatar(radius: 5, backgroundColor: colorDot),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
+          // LEFT SIDE TEXT
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                count,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ],
           ),
-          const SizedBox(width: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 12,
+
+          // RIGHT SIDE STATUS CIRCLE
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
             ),
           ),
         ],
       ),
     );
   }
+
+
+// ===========================================================================
+// RECENT ITEM
+// ===========================================================================
+  Widget buildRecentItem(BuildContext context, {String? plate, String? time}) {
+  return GestureDetector(
+    onTap: plate == null
+        ? null
+        : () {
+            Navigator.pushNamed(
+              context,
+              "/admin/data_kendaraan",
+              arguments: {
+                "plate": plate,
+                "time": time,
+              },
+            );
+          },
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2F3E5A),
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: (plate == null)
+                ? const SizedBox()
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plate,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        time ?? "",
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          if (plate != null)
+            const Icon(Icons.arrow_forward, size: 22, color: Colors.black87),
+        ],
+      ),
+    ),
+  );
 }
 
-// Item Recently
-class _recentItem extends StatelessWidget {
-  final String? plate;
-  final String? time;
-  final String? imagePath;
-
-  const _recentItem({
-    this.plate,
-    this.time,
-    this.imagePath,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F4F4),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          // Kotak image placeholder
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: const Color(0xFF334470),
-              borderRadius: BorderRadius.circular(6),
-              image: imagePath != null
-                  ? DecorationImage(
-                      image: AssetImage(imagePath!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: imagePath == null
-                ? const Icon(
-                    Icons.image_outlined,
-                    color: Colors.white70,
-                    size: 18,
-                  )
-                : null,
-          ),
-          const SizedBox(width: 10),
-
-          // Info plat & waktu
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  plate ?? '',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  time ?? '',
-                  style: const TextStyle(
-                    color: Colors.black54,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Icon arah
-          const Icon(
-            Icons.compare_arrows_rounded,
-            color: Colors.black54,
-            size: 18,
-          ),
-        ],
-      ),
-    );
-  }
 }
