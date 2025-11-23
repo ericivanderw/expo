@@ -28,7 +28,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
 
-      // Halaman pertama yang muncul
       initialRoute: '/admin/home',
 
       routes: {

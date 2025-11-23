@@ -25,7 +25,7 @@ class AdminHome extends StatelessWidget {
         child: SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -50,18 +50,22 @@ class AdminHome extends StatelessWidget {
 
                   // BANNER IMAGE ---------------------------------------------
                   Container(
-                    height: 120,
+                    height: 160,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       image: const DecorationImage(
-                        image: AssetImage("assets/banner.jpg"),
+                        image: AssetImage("assets/banner.png"),
                         fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(
+                        Colors.black38,
+                          BlendMode.darken,   
+                        ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 30),
 
                   // STATUS CHIP ROW -----------------------------------------
                  Row(
