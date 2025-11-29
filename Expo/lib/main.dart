@@ -1,20 +1,21 @@
+import 'package:expo/user/pengumuman.dart';
 import 'package:flutter/material.dart';
+import 'auth/signin_merged.dart';
+import 'user/homepage.dart';
+import 'user/riwayat_kendaraan.dart';
+import 'user/profil.dart';
+import 'user/daftar_kendaraan.dart';
 
-// IMPORT ADMIN PAGES
-import 'admin/home.dart';
-import 'admin/verif.dart';
-import 'admin/verified.dart';
-import 'admin/unverified.dart';
-import 'admin/data_kendaraan.dart';
-import 'admin/detail_kendaraan.dart';
-import 'admin/detail_user.dart';
-
-// IMPORT USER PAGES (opsional, jika ingin routing user juga)
-import 'user/home.dart';
-import 'user/data_kendaraan.dart';
-import 'user/detail_kendaraan.dart';
-import 'user/tambah_kendaraan.dart';
-import 'user/profile.dart';
+// Admin imports
+import 'admin/admin_homepage.dart';
+import 'admin/admin_pengumuman.dart';
+import 'admin/tambah_pengumuman.dart';
+import 'admin/daftar_pengumuman.dart';
+import 'admin/detail_pengumuman.dart';
+import 'admin/riwayat_kendaraan_admin.dart';
+import 'admin/daftar_kendaraan_admin.dart';
+import 'admin/daftar_penghuni_admin.dart';
+import 'admin/tambah_penghuni_admin.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,25 +28,37 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: child!,
+        );
+      },
 
-      initialRoute: '/admin/home',
-
+      initialRoute: '/',
       routes: {
-        // ----------------------- ADMIN ROUTES -----------------------
-        '/admin/home': (context) => const AdminHome(),
-        '/admin/verif': (context) => const VerifyPage(),
-        '/admin/verified': (context) => const VerifiedPage(),
-        '/admin/unverified': (context) => const unverifiedPage(),
-        '/admin/data_kendaraan': (context) => HomeUIScreen(),
-        '/admin/detail_kendaraan': (context) => TodayPage(),
-        '/admin/detail_user': (context) => DetailInformationPage(),
+        '/': (context) => const SignInMergedPage(),
+        // '/signin2': (context) => const SignIn2Page(),
 
-        // ----------------------- USER ROUTES (opsional) -------------
-        '/user/home': (context) => const HomePage(),
-        '/user/data_kendaraan': (context) => VehicleDataPage(),
-        '/user/detail_kendaraan': (context) => VehicleDetailPage(),
-        '/user/tambah_kendaraan': (context) => AddVehiclePage(),
-        '/user/profile': (context) => AccountPage(),
+        // User routes
+        '/user/homepage': (context) => const HomePageUser(),
+        '/user/pengumuman': (context) => const Pengumuman(),
+        '/log': (context) => const RiwayatKendaraanPage(),
+        '/profil': (context) => const ProfilPage(),
+        '/daftar_kendaraan': (context) => const DaftarKendaraanPage(),
+
+        // Admin routes
+        '/admin/homepage': (context) => const AdminHomePage(),
+        '/admin/pengumuman': (context) => const AdminPengumumanPage(),
+        '/admin/tambah_pengumuman': (context) => const TambahPengumumanPage(),
+        '/admin/daftar_pengumuman': (context) => const DaftarPengumumanPage(),
+        '/admin/detail_pengumuman': (context) => const DetailPengumumanPage(),
+        '/admin/riwayat_kendaraan': (context) =>
+            const RiwayatKendaraanAdminPage(),
+        '/admin/daftar_kendaraan': (context) =>
+            const DaftarKendaraanAdminPage(),
+        '/admin/daftar_penghuni': (context) => const DaftarPenghuniAdminPage(),
+        '/admin/tambah_penghuni': (context) => const TambahPenghuniAdminPage(),
       },
     );
   }
