@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/admin/detail_penghuni_admin.dart';
 
@@ -13,71 +14,6 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  final List<Map<String, dynamic>> _residents = [
-    {
-      'name': 'Andi',
-      'address': 'Blok A No. 12',
-      'vehicles': [
-        {
-          'type': 'Mobil',
-          'name': 'Toyota Avanza',
-          'color': 'Hitam',
-          'plate': 'BP 5678 XY',
-        },
-        {
-          'type': 'Mobil',
-          'name': 'Nissan Kicks',
-          'color': 'Abu-abu',
-          'plate': 'BP 9012 GH',
-        },
-        {
-          'type': 'Motor',
-          'name': 'Honda Beat',
-          'color': 'Merah',
-          'plate': 'BP 3456 JK',
-        },
-      ],
-    },
-    {
-      'name': 'Budi',
-      'address': 'Blok B No. 5',
-      'vehicles': [
-        {
-          'type': 'Motor',
-          'name': 'Yamaha NMAX',
-          'color': 'Hitam',
-          'plate': 'BP 1111 AA',
-        },
-      ],
-    },
-    {
-      'name': 'Citra',
-      'address': 'Blok C No. 8',
-      'vehicles': [
-        {
-          'type': 'Mobil',
-          'name': 'Honda Jazz',
-          'color': 'Putih',
-          'plate': 'BP 2222 BB',
-        },
-        {
-          'type': 'Motor',
-          'name': 'Vario 150',
-          'color': 'Putih',
-          'plate': 'BP 3333 CC',
-        },
-      ],
-    },
-  ];
-
-  List<Map<String, dynamic>> get _filteredResidents {
-    return _residents.where((resident) {
-      return resident['name'].toString().toLowerCase().contains(
-        _searchQuery.toLowerCase(),
-      );
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,11 +27,44 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredResidents.length,
-                    itemBuilder: (context, index) {
-                      return _buildResidentCard(_filteredResidents[index]);
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .where('role', isEqualTo: 'user')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const Center(
+                          child: Text('Something went wrong'),
+                        );
+                      }
+
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final data = snapshot.data!.docs;
+
+                      // Filter based on search query
+                      final filteredData = data.where((doc) {
+                        final userData = doc.data() as Map<String, dynamic>;
+                        final name =
+                            userData['username']?.toString().toLowerCase() ??
+                            '';
+                        return name.contains(_searchQuery.toLowerCase());
+                      }).toList();
+
+                      if (filteredData.isEmpty) {
+                        return const Center(child: Text('No residents found'));
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredData.length,
+                        itemBuilder: (context, index) {
+                          return _buildResidentCard(filteredData[index]);
+                        },
+                      );
                     },
                   ),
                 ),
@@ -224,9 +193,12 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
     );
   }
 
-  Widget _buildResidentCard(Map<String, dynamic> resident) {
-    List<dynamic> vehicles = resident['vehicles'] ?? [];
-    int vehicleCount = vehicles.length;
+  Widget _buildResidentCard(DocumentSnapshot doc) {
+    final resident = doc.data() as Map<String, dynamic>;
+    resident['id'] = doc.id; // Add ID to map
+    final String name = resident['username'] ?? 'No Name';
+    final String address = resident['alamat'] ?? 'No Address';
+    final String userId = doc.id;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -249,7 +221,7 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    resident['name'],
+                    name,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -267,7 +239,7 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    resident['address'],
+                    address,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -284,18 +256,35 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.check_circle, size: 16, color: Colors.green),
-                  const SizedBox(width: 4),
-                  Text(
-                    "Jumlah Kendaraan : $vehicleCount",
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              // FutureBuilder to count vehicles
+              FutureBuilder<QuerySnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('plat_terdaftar')
+                    .where('ownerId', isEqualTo: userId)
+                    .get(),
+                builder: (context, snapshot) {
+                  int vehicleCount = 0;
+                  if (snapshot.hasData) {
+                    vehicleCount = snapshot.data!.docs.length;
+                  }
+                  return Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: Colors.green,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        "Jumlah Kendaraan : $vehicleCount",
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               GestureDetector(
                 onTap: () {

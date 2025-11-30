@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/page_header.dart';
 
@@ -8,9 +9,6 @@ class DetailPenghuniAdminPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> vehicles =
-        resident['vehicles'] as List<Map<String, dynamic>>? ?? [];
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
@@ -39,26 +37,53 @@ class DetailPenghuniAdminPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Resident Info Cards
-                        _buildInfoCard("Nama Pemilik", resident['name']),
+                        _buildInfoCard("Nama Pemilik", resident['nama'] ?? '-'),
                         const SizedBox(height: 12),
-                        _buildInfoCard("Alamat", resident['address']),
+                        _buildInfoCard("Alamat", resident['alamat'] ?? '-'),
 
                         const SizedBox(height: 30),
 
-                        // Vehicle List Header
-                        Text(
-                          "Daftar Kendaraan (${vehicles.length})",
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
+                        // Vehicle List from Firestore
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('plat_terdaftar')
+                              .where('ownerId', isEqualTo: resident['id'])
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return const Text("Error loading vehicles");
+                            }
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
 
-                        // Vehicle List
-                        ...vehicles.map(
-                          (vehicle) => _buildVehicleCard(vehicle),
+                            final vehicles = snapshot.data!.docs;
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Daftar Kendaraan (${vehicles.length})",
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                if (vehicles.isEmpty)
+                                  const Text("Tidak ada kendaraan terdaftar."),
+                                ...vehicles.map((doc) {
+                                  final vehicle =
+                                      doc.data() as Map<String, dynamic>;
+                                  return _buildVehicleCard(vehicle);
+                                }),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -103,7 +128,10 @@ class DetailPenghuniAdminPage extends StatelessWidget {
   }
 
   Widget _buildVehicleCard(Map<String, dynamic> vehicle) {
-    bool isCar = vehicle['type'] == 'Mobil';
+    bool isCar = (vehicle['jenis'] ?? '').toString().toLowerCase() == 'mobil';
+    String merk = vehicle['merk'] ?? 'Unknown';
+    String plat = vehicle['plat'] ?? 'No Plate';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -131,7 +159,7 @@ class DetailPenghuniAdminPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "${vehicle['name']} (${vehicle['color']})",
+                  merk,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -140,7 +168,7 @@ class DetailPenghuniAdminPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Plat: ${vehicle['plate']}",
+                  "Plat: $plat",
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey.shade600,
