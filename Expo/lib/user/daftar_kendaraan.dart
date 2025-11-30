@@ -3,6 +3,8 @@ import 'package:expo/widgets/button.dart';
 import 'package:expo/user/tambah_kendaraan.dart';
 import 'package:expo/user/detail_kendaraan_view.dart';
 import 'package:expo/widgets/page_header.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DaftarKendaraanPage extends StatefulWidget {
   final int initialFilter;
@@ -13,38 +15,83 @@ class DaftarKendaraanPage extends StatefulWidget {
 }
 
 class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
-  late int _selectedFilter; // 0: Unverified, 1: Verified, 2: Expired
+  late int _selectedFilter;
+  List<Map<String, dynamic>> _vehicles = [];
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _selectedFilter = widget.initialFilter;
+    _loadVehicles();
   }
 
-  final List<Map<String, dynamic>> _mockVehicles = [
-    {
-      'licensePlate': 'BP5555WD',
-      'status': 'Unverified',
-      'statusColor': Colors.orange,
-    },
-    {
-      'licensePlate': 'BP1234AB',
-      'status': 'Verified',
-      'statusColor': Colors.green,
-    },
-  ];
+  Future<void> _loadVehicles() async {
+    final storage = GetStorage();
+    final userId = storage.read("userId");
+
+    if (userId == null) {
+      print("❌ userId tidak ditemukan di GetStorage");
+      return;
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('kendaraan_request')
+          .where('ownerId', isEqualTo: userId)
+          .get();
+
+      print("Jumlah data ditemukan: ${snapshot.docs.length}");
+
+      for (var doc in snapshot.docs) {
+        print("DOC ID: ${doc.id} => ${doc.data()}");
+      }
+
+      final data = snapshot.docs.map((doc) {
+        final d = doc.data();
+        return {
+          'id': doc.id,
+          'licensePlate': d['plat'] ?? 'Unknown',
+          'status': d['status'] ?? 'pending',
+          'statusColor': _getStatusColor(d['status']),
+          'ownerName': d['merk'],      // atau nama user kalau ada
+          'address': d['jenis'],       // sementara isi jenis kendaraan
+          'type': d['jenis'],
+          'arrivalDate': (d['createdAt'] as Timestamp).toDate().toString(),
+        };
+      }).toList();
+
+      setState(() {
+        _vehicles = data;
+        _loading = false;
+      });
+    } catch (e) {
+      print("🔥 ERROR GET VEHICLES: $e");
+    }
+  }
+
+  Color _getStatusColor(String? s) {
+    switch (s) {
+      case "verified":
+        return Colors.green;
+      case "expired":
+        return Colors.red;
+      default:
+        return Colors.orange; // Pending / Unverified
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredVehicles {
-    final filterStatus = ['Unverified', 'Verified', 'Expired'][_selectedFilter];
-    return _mockVehicles.where((v) => v['status'] == filterStatus).toList();
+    final filterStatus = ['pending', 'verified', 'expired'][_selectedFilter];
+    return _vehicles.where((v) => v['status'] == filterStatus).toList();
   }
 
-  int get _unverifiedCount =>
-      _mockVehicles.where((v) => v['status'] == 'Unverified').length;
+  int get _pendingCount =>
+      _vehicles.where((v) => v['status'] == 'pending').length;
   int get _verifiedCount =>
-      _mockVehicles.where((v) => v['status'] == 'Verified').length;
+      _vehicles.where((v) => v['status'] == 'verified').length;
   int get _expiredCount =>
-      _mockVehicles.where((v) => v['status'] == 'Expired').length;
+      _vehicles.where((v) => v['status'] == 'expired').length;
 
   @override
   Widget build(BuildContext context) {
@@ -65,15 +112,16 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
             child: Column(
               children: [
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
                     child: Column(
                       children: [
-                        const SizedBox(
-                          height: 100,
-                        ), // Spacing for header overlap
+                        const SizedBox(height: 100),
                         Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 600),
+                            constraints:
+                            const BoxConstraints(maxWidth: 600),
                             child: Column(
                               children: [
                                 _buildStatsSection(),
@@ -81,9 +129,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                                 _buildFilterSection(),
                                 const SizedBox(height: 10),
                                 _buildVehicleList(),
-                                const SizedBox(
-                                  height: 100,
-                                ), // Space for bottom button
+                                const SizedBox(height: 100),
                               ],
                             ),
                           ),
@@ -96,106 +142,53 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
             ),
           ),
 
-          // Bottom Button
           Positioned(bottom: 20, left: 20, right: 20, child: _buildAddButton()),
-
-          // Floating Back Button (to ensure clickability over ScrollView)
-          Positioned(
-            top: 0,
-            left: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 20, top: 20),
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Padding(
-                        padding: EdgeInsets.only(left: 4),
-                        child: Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Color(0xFF7C68BE),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildStatsSection() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double screenWidth = constraints.maxWidth;
-        double maxContentWidth = 600;
-        double defaultPadding = 20;
-        double horizontalPadding = (screenWidth - maxContentWidth) / 2;
-
-        if (horizontalPadding < defaultPadding) {
-          horizontalPadding = defaultPadding;
-        }
-
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
-              borderRadius: BorderRadius.circular(16),
+    return _responsiveBox(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8E8E8),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Daftar Kendaraan",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 4),
+            const Text(
+              "Period 2024",
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            const SizedBox(height: 16),
+            Row(
               children: [
-                const Text(
-                  "Daftar Kendaraan",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                Expanded(
+                  child: _buildStatCard("pending", _pendingCount.toString(),
+                      Colors.orange),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  "Period 2024",
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        "Unverified",
-                        _unverifiedCount.toString(),
-                        Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        "Verified",
-                        _verifiedCount.toString(),
-                        Colors.green,
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                      "Verified", _verifiedCount.toString(), Colors.green),
                 ),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
@@ -213,10 +206,8 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
             children: [
               Icon(Icons.circle, size: 10, color: color),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
-              ),
+              Text(label,
+                  style: const TextStyle(fontSize: 14, color: Colors.black54)),
             ],
           ),
           const SizedBox(height: 8),
@@ -234,41 +225,23 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
   }
 
   Widget _buildFilterSection() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double screenWidth = constraints.maxWidth;
-        double maxContentWidth = 600;
-        double defaultPadding = 20;
-        double horizontalPadding = (screenWidth - maxContentWidth) / 2;
-
-        if (horizontalPadding < defaultPadding) {
-          horizontalPadding = defaultPadding;
-        }
-
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildFilterChip("Unverified", 0, _unverifiedCount),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildFilterChip("Verified", 1, _verifiedCount),
-                ),
-                const SizedBox(width: 6),
-                Expanded(child: _buildFilterChip("Expired", 2, _expiredCount)),
-              ],
-            ),
-          ),
-        );
-      },
+    return _responsiveBox(
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: _buildFilterChip("pending", 0, _pendingCount)),
+            const SizedBox(width: 6),
+            Expanded(child: _buildFilterChip("verified", 1, _verifiedCount)),
+            const SizedBox(width: 6),
+            Expanded(child: _buildFilterChip("expired", 2, _expiredCount)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -276,9 +249,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
     final isSelected = _selectedFilter == index;
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedFilter = index;
-        });
+        setState(() => _selectedFilter = index);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
@@ -292,7 +263,6 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
             Flexible(
               child: Text(
                 label,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 13,
                   color: isSelected ? Colors.white : Colors.black87,
@@ -313,9 +283,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                 count.toString(),
                 style: TextStyle(
                   fontSize: 11,
-                  color: isSelected
-                      ? const Color.fromARGB(255, 255, 255, 255)
-                      : Colors.black54,
+                  color: isSelected ? Colors.white : Colors.black54,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -352,7 +320,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               status: vehicle['status'] ?? 'Unknown',
               kedatangan: vehicle['arrivalDate'],
               platKendaraan: vehicle['licensePlate'] ?? 'Unknown',
-              fotoKendaraan: null, // TODO: Add photo data
+              fotoKendaraan: null,
             ),
           ),
         );
@@ -366,7 +334,6 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
         ),
         child: Row(
           children: [
-            // Vehicle Image Placeholder
             Container(
               width: 50,
               height: 50,
@@ -377,7 +344,6 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               child: const Icon(Icons.directions_car, color: Colors.grey),
             ),
             const SizedBox(width: 16),
-            // Vehicle Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,11 +359,8 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(
-                        Icons.circle,
-                        size: 8,
-                        color: vehicle['statusColor'],
-                      ),
+                      Icon(Icons.circle,
+                          size: 8, color: vehicle['statusColor']),
                       const SizedBox(width: 6),
                       Text(
                         vehicle['status'],
@@ -434,6 +397,26 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
           },
         ),
       ),
+    );
+  }
+
+  Widget _responsiveBox({required Widget child}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double screenWidth = constraints.maxWidth;
+        double maxContentWidth = 600;
+        double defaultPadding = 20;
+        double horizontalPadding = (screenWidth - maxContentWidth) / 2;
+
+        if (horizontalPadding < defaultPadding) {
+          horizontalPadding = defaultPadding;
+        }
+
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          child: child,
+        );
+      },
     );
   }
 }

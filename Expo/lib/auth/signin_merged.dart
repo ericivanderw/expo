@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expo/widgets/button.dart';
+import 'package:get_storage/get_storage.dart';
+
 
 class SignInMergedPage extends StatefulWidget {
   const SignInMergedPage({super.key});
@@ -40,36 +42,40 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
       final query = await FirebaseFirestore.instance
           .collection("users")
           .where("username", isEqualTo: username)
+          .where("password", isEqualTo: password) // langsung filter password
           .limit(1)
           .get();
 
       if (query.docs.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Akun tidak ditemukan")),
+          const SnackBar(content: Text("Email atau password salah")),
         );
         setState(() => _loading = false);
         return;
       }
 
-      final data = query.docs.first.data();
+      final doc = query.docs.first;
+      final data = doc.data();
+      final userId = doc.id;
 
-      if (data["password"] != password) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password salah")),
-        );
-        setState(() => _loading = false);
-        return;
-      }
+      // Simpan userId di GetStorage agar halaman lain bisa akses
+      final storage = GetStorage();
+      await storage.write("userId", userId);
+      await storage.write("role", data["role"]);
 
-      // 🔥 Ambil role
-      final String role = data["role"];
+      // cek role
+      final String role = data["role"] ?? "user";
 
-      // 🔥 Navigasi berdasarkan role
       if (role == "admin") {
         Navigator.pushReplacementNamed(context, '/admin/homepage');
       } else {
         Navigator.pushReplacementNamed(context, '/user/homepage');
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login berhasil")),
+      );
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
