@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
         );
       },
 
-      initialRoute: '/',
+      initialRoute: '/admin/homepage',
       routes: {
         '/': (context) => const SignInMergedPage(),
         // '/signin2': (context) => const SignIn2Page(),

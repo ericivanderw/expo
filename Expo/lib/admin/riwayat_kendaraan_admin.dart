@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expo/user/detail_kendaraan.dart';
+import 'package:rxdart/rxdart.dart';
 
 class RiwayatKendaraanAdminPage extends StatefulWidget {
   const RiwayatKendaraanAdminPage({super.key});
@@ -21,10 +22,10 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     super.dispose();
   }
 
-  // 🔥 Stream Firestore mengikuti struktur database kamu
+  // 🔥 STREAM LOG MASUK
   Stream<List<Map<String, dynamic>>> getRiwayatStream() {
     return FirebaseFirestore.instance
-        .collection('smartgate_logs')
+        .collection('logs_masuk')
         .orderBy('waktu_masuk', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -34,9 +35,9 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
         return {
           "id": doc.id,
           "plate": data['plat'] ?? '',
-          "type": data['jenis'] ?? '-', // Sesuai jika kamu punya field 'jenis'
+          "type": data['jenis'] ?? '-',
           "status": data['status'] ?? '',
-          "isEntry": data['status'] == 'masuk',
+          "isEntry": true,
           "date": data['waktu_masuk'] ?? '-',
           "waktu_keluar": data['waktu_keluar'],
         };
@@ -44,7 +45,53 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     });
   }
 
-  // 🔍 Filtering
+  // 🔥 STREAM LOG KELUAR
+  Stream<List<Map<String, dynamic>>> getRiwayatStreamKeluar() {
+    return FirebaseFirestore.instance
+        .collection('logs_keluar')
+        .orderBy('waktu_keluar', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+
+        return {
+          "id": doc.id,
+          "plate": data['plat'] ?? '',
+          "type": data['jenis'] ?? '-',
+          "status": data['status'] ?? '',
+          "isEntry": false,
+          "date": data['waktu_keluar'] ?? '-',
+          "waktu_keluar": data['waktu_keluar'],
+        };
+      }).toList();
+    });
+  }
+
+  // 🔥 GABUNGKAN LOG MASUK + KELUAR
+  Stream<List<Map<String, dynamic>>> getAllRiwayatStream() {
+    final masukStream = getRiwayatStream();
+    final keluarStream = getRiwayatStreamKeluar();
+
+    return CombineLatestStream.combine2(
+      masukStream,
+      keluarStream,
+      (List<Map<String, dynamic>> masuk, List<Map<String, dynamic>> keluar) {
+        final all = [...masuk, ...keluar];
+
+        // Sort by date terbaru
+        all.sort((a, b) {
+          final aTime = a["date"] ?? "";
+          final bTime = b["date"] ?? "";
+          return bTime.compareTo(aTime);
+        });
+
+        return all;
+      },
+    );
+  }
+
+  // 🔍 FILTERING
   List<Map<String, dynamic>> filterData(List<Map<String, dynamic>> data) {
     return data.where((item) {
       final s = _searchQuery.toLowerCase();
@@ -53,11 +100,9 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
           item['plate'].toLowerCase().contains(s) ||
           item['type'].toLowerCase().contains(s);
 
-      final matchesStatus =
-          _statusFilter.isEmpty || item['status'] == _statusFilter;
+      final matchesStatus = _statusFilter.isEmpty || item['status'] == _statusFilter;
 
-      final matchesJenis =
-          _jenisFilter.isEmpty || item['type'] == _jenisFilter;
+      final matchesJenis = _jenisFilter.isEmpty || item['type'] == _jenisFilter;
 
       return matchesSearch && matchesStatus && matchesJenis;
     }).toList();
@@ -76,7 +121,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
 
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: getRiwayatStream(),
+              stream: getAllRiwayatStream(), // 🔥 DIGANTI STREAM GABUNGAN  
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -105,7 +150,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     );
   }
 
-  // 🟥 Jika data kosong
+  // 🟥 EMPTY VIEW
   Widget _emptyState() {
     return Center(
       child: Column(
@@ -122,7 +167,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     );
   }
 
-  // 🔵 Header UI
+  // 🔵 HEADER UI
   Widget _buildHeader() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -211,18 +256,16 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                         border: InputBorder.none,
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                          icon: const Icon(Icons.clear,
-                              color: Colors.black54),
-                          onPressed: () {
-                            setState(() {
-                              _searchQuery = '';
-                              _searchController.clear();
-                            });
-                          },
-                        )
+                                icon: const Icon(Icons.clear, color: Colors.black54),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchQuery = '';
+                                    _searchController.clear();
+                                  });
+                                },
+                              )
                             : const Icon(Icons.search, color: Colors.black54),
-                        contentPadding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
                   ),
@@ -235,7 +278,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     );
   }
 
-  // 🟣 Filter chips
+  // 🟣 FILTERS
   Widget _buildFilters() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -264,7 +307,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     );
   }
 
-  // Chip builder
+  // CHIP BUILDER
   Widget _buildFilterChip({
     required String label,
     required String value,
@@ -279,9 +322,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
           color: value.isNotEmpty ? const Color(0xFF7C68BE) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: value.isNotEmpty
-                ? const Color(0xFF7C68BE)
-                : Colors.grey.shade300,
+            color: value.isNotEmpty ? const Color(0xFF7C68BE) : Colors.grey.shade300,
           ),
         ),
         child: Row(
@@ -295,8 +336,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
               style: TextStyle(
                 fontSize: 12,
                 color: value.isNotEmpty ? Colors.white : Colors.black87,
-                fontWeight:
-                value.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: value.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
             const SizedBox(width: 4),
@@ -310,14 +350,12 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
       ),
       itemBuilder: (context) => [
         PopupMenuItem<String>(value: '', child: Text('Semua $label')),
-        ...items.map(
-              (item) => PopupMenuItem<String>(value: item, child: Text(item)),
-        ),
+        ...items.map((item) => PopupMenuItem<String>(value: item, child: Text(item))),
       ],
     );
   }
 
-  // 🟢 Card item
+  // 🟢 HISTORY ITEM CARD
   Widget _buildHistoryItem(Map<String, dynamic> item) {
     final bool isEntry = item['isEntry'];
     final Color statusColor = isEntry ? Colors.green : Colors.red;
@@ -344,8 +382,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                   color: Colors.black87,
                 ),
               ),
-              Icon(isEntry ? Icons.login : Icons.logout,
-                  color: Colors.black87),
+              Icon(isEntry ? Icons.login : Icons.logout, color: Colors.black87),
             ],
           ),
 
@@ -376,7 +413,6 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                 item['date'],
                 style: const TextStyle(color: Colors.black54, fontSize: 13),
               ),
-
               GestureDetector(
                 onTap: () {
                   Navigator.push(
