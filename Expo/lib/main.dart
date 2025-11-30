@@ -16,8 +16,18 @@ import 'admin/riwayat_kendaraan_admin.dart';
 import 'admin/daftar_kendaraan_admin.dart';
 import 'admin/daftar_penghuni_admin.dart';
 import 'admin/tambah_penghuni_admin.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
+
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
