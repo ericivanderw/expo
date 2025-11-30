@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'detail_kendaraan.dart';
+import 'package:get_storage/get_storage.dart';
+
 
 class RiwayatKendaraanPage extends StatefulWidget {
   const RiwayatKendaraanPage({super.key});
@@ -14,58 +17,168 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   String _statusFilter = '';
   String _jenisFilter = '';
 
-  final List<Map<String, dynamic>> _historyData = [
-    {
-      "plate": "BP1234CD",
-      "type": "Mobil",
-      "status": "Keluar",
-      "date": "28 Sept 2024, 14.30",
-      "isEntry": false,
-    },
-    {
-      "plate": "BP5678EF",
-      "type": "Motor",
-      "status": "Masuk",
-      "date": "27 Sept 2024, 07.30",
-      "isEntry": true,
-    },
-    {
-      "plate": "BP1234CD",
-      "type": "Mobil",
-      "status": "Masuk",
-      "date": "25 Sept 2024, 21.00",
-      "isEntry": true,
-    },
-    {
-      "plate": "BP1234CD",
-      "type": "Mobil",
-      "status": "Keluar",
-      "date": "25 Sept 2024, 05.30",
-      "isEntry": false,
-    },
-    {
-      "plate": "BP5678EF",
-      "type": "Motor",
-      "status": "Masuk",
-      "date": "24 Sept 2024, 08.00",
-      "isEntry": true,
-    },
-  ];
+  List<Map<String, dynamic>> _historyData = [];
+  List<String> userPlates = [];
+  bool _isLoading = true;
+
+  // Storage (boleh tetap final)
+  final storage = GetStorage();
+
+  // ⛔ Tidak boleh read dalam deklarasi
+  // final String currentUserID = storage.read("userId"); // ERROR
+
+  // ✅ Ganti dengan late (diisi pada initState)
+  late String currentUserID;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔥 Sekarang aman: object State sudah siap
+    currentUserID = storage.read("userId") ?? "";
+    print("USER ID = $currentUserID");   // <── CEK INI
+
+    _loadUserPlates();
+  }
+
+  Future<void> _loadUserPlates() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('plat_terdaftar')
+          .where('ownerId', isEqualTo: currentUserID)
+          .get();
+
+
+
+
+      userPlates =
+          snapshot.docs.map((doc) => doc['plat'].toString()).toList();
+
+      await _fetchLogs();
+    } catch (e) {
+      print("Error load plat: $e");
+    }
+
+    setState(() => _isLoading = false);
+  }
+
+  DateTime _parseDate(dynamic raw) {
+    if (raw == null) return DateTime(2000); // fallback
+
+    // Jika Timestamp Firestore → convert
+    if (raw is Timestamp) return raw.toDate();
+
+    // Jika String → coba parse
+    if (raw is String) {
+      try {
+        return DateTime.parse(raw);
+      } catch (e) {
+        print("Gagal parse String date: $raw");
+        return DateTime(2000);
+      }
+    }
+
+    print("Unknown date format: $raw");
+    return DateTime(2000);
+  }
+
+  Future<void> _fetchLogs() async {
+    final List<Map<String, dynamic>> temp = [];
+
+    try {
+      if (userPlates.isEmpty) return;
+
+      // LOG MASUK
+      final masukSnap = await FirebaseFirestore.instance
+          .collection('logs_masuk')
+          .where('plat', whereIn: userPlates)
+          .get();
+
+      print("LOG MASUK: ${masukSnap.docs.length}");
+
+      for (var doc in masukSnap.docs) {
+        final data = doc.data();
+        final rawDate = data['waktu_masuk'];
+
+        temp.add({
+          "plat": data['plat'] ?? '',
+          "type": data['type'] ?? '',
+          "status": "Masuk",
+          "date": _formatDate(rawDate),
+          "date_raw": _parseDate(rawDate),
+        });
+      }
+
+      // LOG KELUAR
+      final keluarSnap = await FirebaseFirestore.instance
+          .collection('logs_keluar')
+          .where('plat', whereIn: userPlates)
+          .get();
+
+      print("LOG KELUAR: ${keluarSnap.docs.length}");
+
+      for (var doc in keluarSnap.docs) {
+        final data = doc.data();
+        final rawDate = data['waktu_keluar'];
+
+        temp.add({
+          "plat": data['plat'] ?? '',
+          "type": data['type'] ?? '',
+          "status": "keluar",
+          "date": _formatDate(rawDate),
+          "date_raw": _parseDate(rawDate),
+        });
+      }
+
+      // SORT (aman untuk null, string, timestamp)
+      temp.sort((a, b) {
+        DateTime ad = a['date_raw'];
+        DateTime bd = b['date_raw'];
+        return bd.compareTo(ad); // newest first
+      });
+
+    } catch (e) {
+      print("Error load logs: $e");
+    }
+
+    setState(() => _historyData = temp);
+  }
+
+
+  // ─────────────────────────────────────────────
+
+  String _formatDate(dynamic raw) {
+    DateTime dt = _parseDate(raw);
+
+    return "${dt.day} ${_monthName(dt.month)} ${dt.year}, "
+        "${dt.hour.toString().padLeft(2, '0')}:"
+        "${dt.minute.toString().padLeft(2, '0')}";
+  }
+
+  String _monthName(int m) {
+    const months = [
+      "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+      "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
+    ];
+    return months[m - 1];
+  }
+
+  // ─────────────────────────────────────────────
 
   List<Map<String, dynamic>> get _filteredHistory {
     return _historyData.where((item) {
       final matchesSearch =
           _searchQuery.isEmpty ||
-              item['plate'].toString().toLowerCase().contains(
-                _searchQuery.toLowerCase(),
-              ) ||
-              item['type'].toString().toLowerCase().contains(
-                _searchQuery.toLowerCase(),
-              );
+              item['plat'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              item['type'].toLowerCase().contains(_searchQuery.toLowerCase());
 
       final matchesStatus =
           _statusFilter.isEmpty || item['status'] == _statusFilter;
-      final matchesJenis = _jenisFilter.isEmpty || item['type'] == _jenisFilter;
+
+      final matchesJenis =
+          _jenisFilter.isEmpty || item['type'] == _jenisFilter;
 
       return matchesSearch && matchesStatus && matchesJenis;
     }).toList();
@@ -76,6 +189,8 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
     _searchController.dispose();
     super.dispose();
   }
+
+  // ─────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -91,27 +206,10 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
-                child: _filteredHistory.isEmpty
-                    ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 64,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Tidak ada data ditemukan',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _filteredHistory.isEmpty
+                    ? _buildEmptyState()
                     : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                   itemCount: _filteredHistory.length,
@@ -121,6 +219,24 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────── UI COMPONENTS ─────────────
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text(
+            'Tidak ada data ditemukan',
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
           ),
         ],
       ),
@@ -164,11 +280,10 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SizedBox(height: 20),
@@ -190,11 +305,6 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                           ),
                         ],
                       ),
-                      Image.asset(
-                        'assets/icon-clock.png',
-                        width: 70,
-                        height: 70,
-                      ),
                     ],
                   ),
                   const SizedBox(height: 25),
@@ -207,19 +317,15 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                     child: TextField(
                       controller: _searchController,
                       onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                        });
+                        setState(() => _searchQuery = value);
                       },
                       decoration: InputDecoration(
                         hintText: "Search plat/type",
                         border: InputBorder.none,
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                          icon: const Icon(
-                            Icons.clear,
-                            color: Colors.black54,
-                          ),
+                          icon: const Icon(Icons.clear,
+                              color: Colors.black54),
                           onPressed: () {
                             setState(() {
                               _searchController.clear();
@@ -228,9 +334,8 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                           },
                         )
                             : const Icon(Icons.search, color: Colors.black54),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                        ),
+                        contentPadding:
+                        const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
                   ),
@@ -252,11 +357,9 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
           _buildFilterChip(
             label: "Status",
             value: _statusFilter,
-            items: ['Masuk', 'Keluar'],
+            items: ['Masuk', 'keluar'],
             onChanged: (value) {
-              setState(() {
-                _statusFilter = value;
-              });
+              setState(() => _statusFilter = value);
             },
           ),
           const SizedBox(width: 10),
@@ -265,9 +368,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
             value: _jenisFilter,
             items: ['Motor', 'Mobil'],
             onChanged: (value) {
-              setState(() {
-                _jenisFilter = value;
-              });
+              setState(() => _jenisFilter = value);
             },
           ),
         ],
@@ -295,20 +396,14 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            if (value.isNotEmpty) ...[
-              const Icon(Icons.filter_alt, size: 14, color: Colors.white),
-              const SizedBox(width: 4),
-            ],
             Text(
               value.isEmpty ? label : value,
               style: TextStyle(
                 fontSize: 12,
                 color: value.isNotEmpty ? Colors.white : Colors.black87,
-                fontWeight: value.isNotEmpty
-                    ? FontWeight.w600
-                    : FontWeight.normal,
+                fontWeight:
+                value.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
             const SizedBox(width: 4),
@@ -330,7 +425,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   }
 
   Widget _buildHistoryItem(Map<String, dynamic> item) {
-    final bool isEntry = item['isEntry'];
+    final bool isEntry = item['status'] == "Masuk";
     final Color statusColor = isEntry ? Colors.green : Colors.red;
     final String statusText = item['status'];
 
@@ -348,14 +443,15 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "${item['plate']} • ${item['type']}",
+                "${item['plat']} • ${item['type']}",
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
               ),
-              Icon(isEntry ? Icons.login : Icons.logout, color: Colors.black87),
+              Icon(isEntry ? Icons.login : Icons.logout,
+                  color: Colors.black87),
             ],
           ),
           const SizedBox(height: 8),
@@ -365,10 +461,8 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
               const SizedBox(width: 4),
               Text(
                 statusText,
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.w500,
-                ),
+                style:
+                TextStyle(color: statusColor, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -376,16 +470,16 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                item['date'],
-                style: const TextStyle(color: Colors.black54, fontSize: 13),
-              ),
+              Text(item['date'],
+                  style: const TextStyle(
+                      color: Colors.black54, fontSize: 13)),
               GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DetailKendaraanPage(data: item),
+                      builder: (context) =>
+                          DetailKendaraanPage(data: item),
                     ),
                   );
                 },
@@ -405,4 +499,3 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
     );
   }
 }
-
