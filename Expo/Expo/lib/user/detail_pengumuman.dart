@@ -1,0 +1,180 @@
+import 'package:flutter/material.dart';
+import 'package:expo/widgets/appbarback.dart';
+
+class DetailPengumuman extends StatelessWidget {
+  const DetailPengumuman({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFE0E0E0),
+      appBar: const AppBarBack(
+        title: "Detail Pengumuman",
+        backgroundColor: Colors.white,
+        titleColor: Colors.black,
+        iconColor: Colors.black,
+        iconBackgroundColor: Color(0xFFF5F5F5),
+        height: 130,
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "[Kegiatan Bulanan] - Gotong Royong Warga",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Uploaded 1 Jan 2024, 08:30",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        image: const DecorationImage(
+                          image: NetworkImage("https://picsum.photos/400/500"),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      width: double.infinity,
+                      height: 250,
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F8F8),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Deskripsi",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          "Kegiatan bulanan gotong royong untuk bulan Januari. Akan dilaksanakan pada tanggal 10 Januari di hari Minggu, titik kumpul di balai warga. Harap bapak/ibu bisa meluangkan waktu untuk mengikuti kegiatan rutin ini demi kebersihan lingkungan bersama.\\n\\n(Ini adalah contoh teks panjang untuk menguji fitur scroll pada halaman. Jika deskripsi sangat panjang, halaman ini akan otomatis bisa digulir ke bawah).",
+                          style: TextStyle(fontSize: 15, color: Colors.black54),
+                          textAlign: TextAlign.justify,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F8F8),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Tanggal Kegiatan",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          "10 January 2024",
+                          style: TextStyle(fontSize: 14, color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  const Divider(),
+                  const SizedBox(height: 15),
+                  const Text(
+                    "Uploaded By",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 22,
+                        backgroundImage: NetworkImage(
+                          "https://i.pravatar.cc/150?img=5",
+                        ),
+                        backgroundColor: Colors.grey,
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            "Admin",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            "Pengurus Keamanan",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.deepPurple,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
