@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 
 class CustomButton extends StatefulWidget {
   final String text;
-  final VoidCallback onPressed;
+
+  /// Bisa menerima:
+  /// - void Function()
+  /// - Future<void> Function()
+  final Function()? onPressed;
 
   const CustomButton({
     super.key,
@@ -16,22 +20,41 @@ class CustomButton extends StatefulWidget {
 
 class _CustomButtonState extends State<CustomButton> {
   bool _pressed = false;
+  bool _loading = false;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         double buttonWidth =
-            (constraints.maxWidth.isFinite && constraints.maxWidth > 0)
-                ? constraints.maxWidth
-                : MediaQuery.of(context).size.width * 0.8;
+        (constraints.maxWidth.isFinite && constraints.maxWidth > 0)
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width * 0.8;
 
         return GestureDetector(
-          onTapDown: (_) => setState(() => _pressed = true),
-          onTapCancel: () => setState(() => _pressed = false),
-          onTapUp: (_) {
+          onTapDown: (_) {
+            if (!_loading && widget.onPressed != null) {
+              setState(() => _pressed = true);
+            }
+          },
+          onTapCancel: () {
+            if (!_loading) {
+              setState(() => _pressed = false);
+            }
+          },
+          onTapUp: (_) async {
+            if (_loading || widget.onPressed == null) return;
+
             setState(() => _pressed = false);
-            widget.onPressed();
+
+            final result = widget.onPressed!();
+
+            // Kalau function return Future → tunggu
+            if (result is Future) {
+              setState(() => _loading = true);
+              await result;
+              if (mounted) setState(() => _loading = false);
+            }
           },
           child: AnimatedScale(
             scale: _pressed ? 0.96 : 1.0,
@@ -49,42 +72,50 @@ class _CustomButtonState extends State<CustomButton> {
                     end: Alignment.bottomCenter,
                     colors: _pressed
                         ? [
-                            const Color(0xFF6D4FC2),
-                            const Color(0xFF361D77),
-                          ]
+                      const Color(0xFF6D4FC2),
+                      const Color(0xFF361D77),
+                    ]
                         : [
-                            const Color(0xFF8C6CCF),
-                            const Color(0xFF5A3FAE),
-                          ],
+                      const Color(0xFF8C6CCF),
+                      const Color(0xFF5A3FAE),
+                    ],
                   ),
                   boxShadow: _pressed
                       ? [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.35),
-                            offset: const Offset(2, 2),
-                            blurRadius: 6,
-                          ),
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.25),
-                            offset: const Offset(-2, -2),
-                            blurRadius: 6,
-                          ),
-                        ]
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.35),
+                      offset: const Offset(2, 2),
+                      blurRadius: 6,
+                    ),
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.25),
+                      offset: const Offset(-2, -2),
+                      blurRadius: 6,
+                    ),
+                  ]
                       : [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.25),
-                            offset: const Offset(4, 4),
-                            blurRadius: 8,
-                          ),
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.2),
-                            offset: const Offset(-4, -4),
-                            blurRadius: 8,
-                          ),
-                        ],
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        offset: const Offset(4, 4),
+                        blurRadius: 8),
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.2),
+                      offset: const Offset(-4, -4),
+                      blurRadius: 8,
+                    ),
+                  ],
                 ),
                 child: Center(
-                  child: Text(
+                  child: _loading
+                      ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Colors.white,
+                    ),
+                  )
+                      : Text(
                     widget.text,
                     style: const TextStyle(
                       fontSize: 16,

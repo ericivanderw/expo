@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expo/widgets/button.dart';
 
 class SignInMergedPage extends StatefulWidget {
@@ -13,6 +14,70 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
   bool _isSignInFormVisible = false;
   bool _showPassword = false;
   bool _rememberMe = true;
+
+  // 🔥 Controller untuk login
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _loading = false;
+
+  // 🔥 Login tanpa Firebase Auth (Firestore manual)
+  Future<void> _handleLogin() async {
+    setState(() => _loading = true);
+
+    final username = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email dan password wajib diisi")),
+      );
+      setState(() => _loading = false);
+      return;
+    }
+
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection("users")
+          .where("username", isEqualTo: username)
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Akun tidak ditemukan")),
+        );
+        setState(() => _loading = false);
+        return;
+      }
+
+      final data = query.docs.first.data();
+
+      if (data["password"] != password) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Password salah")),
+        );
+        setState(() => _loading = false);
+        return;
+      }
+
+      // 🔥 Ambil role
+      final String role = data["role"];
+
+      // 🔥 Navigasi berdasarkan role
+      if (role == "admin") {
+        Navigator.pushReplacementNamed(context, '/admin/homepage');
+      } else {
+        Navigator.pushReplacementNamed(context, '/user/homepage');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+
+    setState(() => _loading = false);
+  }
 
   void _toggleView() {
     setState(() {
@@ -41,7 +106,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. ANIMATED BACKGROUND
+          // =============== BACKGROUND ===============
           AnimatedContainer(
             duration: const Duration(milliseconds: 800),
             curve: Curves.easeInOut,
@@ -53,40 +118,37 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                 end: Alignment.bottomCenter,
                 colors: _isSignInFormVisible
                     ? [
-                        const Color(0xFF2E1A47), // Deep Purple
-                        const Color(0xFF1A0F29), // Darker Purple
-                        Colors.black, // Black
-                      ]
+                  const Color(0xFF2E1A47),
+                  const Color(0xFF1A0F29),
+                  Colors.black,
+                ]
                     : [
-                        const Color(0xFF8C6CCF),
-                        const Color(0xFFA890D9),
-                        const Color.fromARGB(255, 255, 255, 255),
-                      ],
+                  const Color(0xFF8C6CCF),
+                  const Color(0xFFA890D9),
+                  Colors.white,
+                ],
               ),
             ),
           ),
 
-          // 2. VIEW 1 CONTENT (Fade out when form is visible)
+          // ================= VIEW 1 =================
           AnimatedOpacity(
             opacity: _isSignInFormVisible ? 0.0 : 1.0,
             duration: const Duration(milliseconds: 600),
             child: IgnorePointer(
-              ignoring: _isSignInFormVisible, // Disable clicks when hidden
+              ignoring: _isSignInFormVisible,
               child: SafeArea(
                 child: SizedBox(
-                  width: double.infinity, // Ensure full width for centering
+                  width: double.infinity,
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: width * 0.08),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment
-                          .center, // Explicitly center children
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Spacer(flex: 1),
-                        // Placeholder for Logo (handled by AnimatedPositioned below)
                         SizedBox(height: logoSize1 * 0.8),
                         const Spacer(flex: 4),
 
-                        // TITLE + SLOGAN
                         Column(
                           children: [
                             Text(
@@ -134,33 +196,25 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
             ),
           ),
 
-          // 3. ANIMATED LOGO (Moves from Center to Top)
+          // ========== LOGO MOVING ANIMATION ==========
           AnimatedPositioned(
             duration: const Duration(milliseconds: 800),
             curve: Curves.easeInOut,
-            top: _isSignInFormVisible
-                ? height *
-                      0.10 // Position for View 2
-                : (height - (logoSize1 * 0.8)) / 2 -
-                      (height *
-                          0.2), // Approx center for View 1 (adjust as needed)
+            top: _isSignInFormVisible ? height * 0.10 : height * 0.30,
             left: _isSignInFormVisible
                 ? (width - logoWidth2) / 2
                 : (width - logoSize1) / 2,
             width: _isSignInFormVisible ? logoWidth2 : logoSize1,
-            height: _isSignInFormVisible
-                ? logoWidth2 * 0.8
-                : logoSize1 * 0.8, // Maintain aspect ratio approx
+            height:
+            _isSignInFormVisible ? logoWidth2 * 0.8 : logoSize1 * 0.8,
             child: Image.asset('assets/logo.png', fit: BoxFit.contain),
           ),
 
-          // 4. VIEW 2 FORM (Slide up from bottom)
+          // ================= VIEW 2 FORM =================
           AnimatedPositioned(
             duration: const Duration(milliseconds: 800),
             curve: Curves.easeInOut,
-            bottom: _isSignInFormVisible
-                ? 0
-                : -height * 0.6, // Hide below screen
+            bottom: _isSignInFormVisible ? 0 : -height * 0.6,
             left: 0,
             right: 0,
             child: Center(
@@ -191,11 +245,6 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                       children: [
                         SizedBox(height: height * 0.04),
 
-                        // Back Button (Optional, to go back to View 1)
-                        // GestureDetector(
-                        //   onTap: _toggleView,
-                        //   child: Icon(Icons.arrow_back, color: Colors.black54),
-                        // ),
                         const Center(
                           child: Column(
                             children: [
@@ -229,12 +278,14 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+
                         const SizedBox(height: 6),
 
-                        // EMAIL FIELD
+                        // 🔥 EMAIL INPUT
                         _inputField(
                           icon: Icons.email_outlined,
-                          hint: "My Email",
+                          hint: "Enter your email",
+                          controller: _emailController,
                           iconColor: iconColor,
                         ),
 
@@ -248,14 +299,14 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+
                         const SizedBox(height: 6),
 
-                        // PASSWORD FIELD
+                        // 🔥 PASSWORD INPUT
                         _passwordField(iconColor),
 
                         const SizedBox(height: 12),
 
-                        // REMEMBER ME
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -267,10 +318,8 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                                       setState(() => _rememberMe = val ?? true),
                                   activeColor: Colors.deepPurple,
                                 ),
-                                const Text(
-                                  "Remember Me",
-                                  style: TextStyle(fontSize: 13),
-                                ),
+                                const Text("Remember Me",
+                                    style: TextStyle(fontSize: 13)),
                               ],
                             ),
                             const Text(
@@ -285,7 +334,6 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
 
                         SizedBox(height: height * 0.025),
 
-                        // SIGN IN BUTTON
                         Center(
                           child: ConstrainedBox(
                             constraints: BoxConstraints(
@@ -294,12 +342,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                             ),
                             child: CustomButton(
                               text: "Sign In",
-                              onPressed: () {
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  '/user/homepage',
-                                );
-                              },
+                              onPressed: _loading ? null : () => _handleLogin(),
                             ),
                           ),
                         ),
@@ -321,6 +364,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
   Widget _inputField({
     required IconData icon,
     required String hint,
+    required TextEditingController controller,
     required Color iconColor,
   }) {
     return Container(
@@ -334,12 +378,13 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
         children: [
           Icon(icon, color: iconColor),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: TextField(
+              controller: controller,
               decoration: InputDecoration(
                 border: InputBorder.none,
-                hintText: "My Email",
-                hintStyle: TextStyle(color: Colors.black38),
+                hintText: hint,
+                hintStyle: const TextStyle(color: Colors.black38),
               ),
             ),
           ),
@@ -363,10 +408,11 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
+              controller: _passwordController,
               obscureText: !_showPassword,
               decoration: const InputDecoration(
                 border: InputBorder.none,
-                hintText: "My Password",
+                hintText: "Enter your password",
                 hintStyle: TextStyle(color: Colors.black38),
               ),
             ),

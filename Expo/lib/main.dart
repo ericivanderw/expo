@@ -45,10 +45,10 @@ class MyApp extends StatelessWidget {
         );
       },
 
-      initialRoute: '/admin/homepage',
+      initialRoute: '/',
       routes: {
         '/': (context) => const SignInMergedPage(),
-        // '/signin2': (context) => const SignIn2Page(),
+        //'/signin2': (context) => const SignIn2Page(),
 
         // User routes
         '/user/homepage': (context) => const HomePageUser(),
