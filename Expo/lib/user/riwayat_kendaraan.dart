@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'detail_kendaraan.dart';
 import 'package:get_storage/get_storage.dart';
 
-
 class RiwayatKendaraanPage extends StatefulWidget {
   const RiwayatKendaraanPage({super.key});
 
@@ -16,6 +15,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   String _searchQuery = '';
   String _statusFilter = '';
   String _jenisFilter = '';
+  DateTimeRange? _selectedDateRange;
 
   List<Map<String, dynamic>> _historyData = [];
   List<String> userPlates = [];
@@ -36,7 +36,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
 
     // 🔥 Sekarang aman: object State sudah siap
     currentUserID = storage.read("userId") ?? "";
-    print("USER ID = $currentUserID");   // <── CEK INI
+    print("USER ID = $currentUserID"); // <── CEK INI
 
     _loadUserPlates();
   }
@@ -50,11 +50,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
           .where('ownerId', isEqualTo: currentUserID)
           .get();
 
-
-
-
-      userPlates =
-          snapshot.docs.map((doc) => doc['plat'].toString()).toList();
+      userPlates = snapshot.docs.map((doc) => doc['plat'].toString()).toList();
 
       await _fetchLogs();
     } catch (e) {
@@ -90,6 +86,20 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
     try {
       if (userPlates.isEmpty) return;
 
+      // 🔥 FETCH VEHICLE TYPES (Plat -> Jenis)
+      final typesSnapshot = await FirebaseFirestore.instance
+          .collection('kendaraan_request')
+          .where('plat', whereIn: userPlates)
+          .get();
+
+      final Map<String, String> vehicleTypes = {};
+      for (var doc in typesSnapshot.docs) {
+        final data = doc.data();
+        if (data['plat'] != null && data['jenis'] != null) {
+          vehicleTypes[data['plat']] = data['jenis'];
+        }
+      }
+
       // LOG MASUK
       final masukSnap = await FirebaseFirestore.instance
           .collection('logs_masuk')
@@ -101,10 +111,11 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
       for (var doc in masukSnap.docs) {
         final data = doc.data();
         final rawDate = data['waktu_masuk'];
+        final plate = data['plat'] ?? '';
 
         temp.add({
-          "plat": data['plat'] ?? '',
-          "type": data['type'] ?? '',
+          "plat": plate,
+          "type": vehicleTypes[plate] ?? data['jenis'] ?? '-',
           "status": "Masuk",
           "date": _formatDate(rawDate),
           "date_raw": _parseDate(rawDate),
@@ -122,10 +133,11 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
       for (var doc in keluarSnap.docs) {
         final data = doc.data();
         final rawDate = data['waktu_keluar'];
+        final plate = data['plat'] ?? '';
 
         temp.add({
-          "plat": data['plat'] ?? '',
-          "type": data['type'] ?? '',
+          "plat": plate,
+          "type": vehicleTypes[plate] ?? data['jenis'] ?? '-',
           "status": "keluar",
           "date": _formatDate(rawDate),
           "date_raw": _parseDate(rawDate),
@@ -138,14 +150,12 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
         DateTime bd = b['date_raw'];
         return bd.compareTo(ad); // newest first
       });
-
     } catch (e) {
       print("Error load logs: $e");
     }
 
     setState(() => _historyData = temp);
   }
-
 
   // ─────────────────────────────────────────────
 
@@ -159,8 +169,18 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
 
   String _monthName(int m) {
     const months = [
-      "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-      "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Agt",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Des",
     ];
     return months[m - 1];
   }
@@ -171,16 +191,27 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
     return _historyData.where((item) {
       final matchesSearch =
           _searchQuery.isEmpty ||
-              item['plat'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              item['type'].toLowerCase().contains(_searchQuery.toLowerCase());
+          item['plat'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          item['type'].toLowerCase().contains(_searchQuery.toLowerCase());
 
       final matchesStatus =
           _statusFilter.isEmpty || item['status'] == _statusFilter;
 
-      final matchesJenis =
-          _jenisFilter.isEmpty || item['type'] == _jenisFilter;
+      final matchesJenis = _jenisFilter.isEmpty || item['type'] == _jenisFilter;
 
-      return matchesSearch && matchesStatus && matchesJenis;
+      bool matchesDate = true;
+      if (_selectedDateRange != null) {
+        final DateTime itemDate = item['date_raw'];
+        final start = _selectedDateRange!.start;
+        final end = _selectedDateRange!.end
+            .add(const Duration(days: 1))
+            .subtract(const Duration(seconds: 1));
+        matchesDate =
+            itemDate.isAfter(start.subtract(const Duration(seconds: 1))) &&
+            itemDate.isBefore(end.add(const Duration(seconds: 1)));
+      }
+
+      return matchesSearch && matchesStatus && matchesJenis && matchesDate;
     }).toList();
   }
 
@@ -211,12 +242,12 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                     : _filteredHistory.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                  itemCount: _filteredHistory.length,
-                  itemBuilder: (context, index) {
-                    return _buildHistoryItem(_filteredHistory[index]);
-                  },
-                ),
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                        itemCount: _filteredHistory.length,
+                        itemBuilder: (context, index) {
+                          return _buildHistoryItem(_filteredHistory[index]);
+                        },
+                      ),
               ),
             ),
           ),
@@ -324,18 +355,21 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                         border: InputBorder.none,
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                          icon: const Icon(Icons.clear,
-                              color: Colors.black54),
-                          onPressed: () {
-                            setState(() {
-                              _searchController.clear();
-                              _searchQuery = '';
-                            });
-                          },
-                        )
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.black54,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
                             : const Icon(Icons.search, color: Colors.black54),
-                        contentPadding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -349,29 +383,125 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   }
 
   Widget _buildFilters() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _buildFilterChip(
-            label: "Status",
-            value: _statusFilter,
-            items: ['Masuk', 'keluar'],
-            onChanged: (value) {
-              setState(() => _statusFilter = value);
-            },
+          Flexible(child: _buildDateFilter()),
+          const SizedBox(width: 8),
+          Flexible(
+            child: _buildFilterChip(
+              label: "Status",
+              value: _statusFilter,
+              items: ['Masuk', 'keluar'],
+              onChanged: (value) {
+                setState(() => _statusFilter = value);
+              },
+            ),
           ),
-          const SizedBox(width: 10),
-          _buildFilterChip(
-            label: "Jenis Kendaraan",
-            value: _jenisFilter,
-            items: ['Motor', 'Mobil'],
-            onChanged: (value) {
-              setState(() => _jenisFilter = value);
-            },
+          const SizedBox(width: 8),
+          Flexible(
+            child: _buildFilterChip(
+              label: "Jenis",
+              value: _jenisFilter,
+              items: ['Motor', 'Mobil'],
+              onChanged: (value) {
+                setState(() => _jenisFilter = value);
+              },
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDateFilter() {
+    String label = "Tanggal";
+    bool isSelected = _selectedDateRange != null;
+    if (isSelected) {
+      final start = _selectedDateRange!.start;
+      final end = _selectedDateRange!.end;
+      label =
+          "${start.day} ${_monthName(start.month)} - ${end.day} ${_monthName(end.month)}";
+    }
+
+    return GestureDetector(
+      onTap: () async {
+        final DateTimeRange? picked = await showDateRangePicker(
+          context: context,
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+          initialDateRange: _selectedDateRange,
+          initialEntryMode: DatePickerEntryMode.calendarOnly,
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: Color(0xFF7C68BE),
+                  onPrimary: Colors.white,
+                  onSurface: Colors.black,
+                ),
+                textButtonTheme: TextButtonThemeData(
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF7C68BE),
+                  ),
+                ),
+              ),
+              child: child!,
+            );
+          },
+          saveText: "Simpan",
+          cancelText: "Batal",
+          helpText: "Pilih Rentang Tanggal",
+          fieldStartLabelText: "Tanggal Mulai",
+          fieldEndLabelText: "Tanggal Selesai",
+        );
+        if (picked != null && picked != _selectedDateRange) {
+          setState(() {
+            _selectedDateRange = picked;
+          });
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF7C68BE) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF7C68BE) : Colors.grey.shade300,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedDateRange = null;
+                  });
+                },
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 4),
+                  child: Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              )
+            else
+              const Icon(Icons.calendar_today, size: 14, color: Colors.black54),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSelected ? Colors.white : Colors.black87,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -385,7 +515,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
     return PopupMenuButton<String>(
       onSelected: onChanged,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: value.isNotEmpty ? const Color(0xFF7C68BE) : Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -396,14 +526,22 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
           ),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              value.isEmpty ? label : value,
-              style: TextStyle(
-                fontSize: 12,
-                color: value.isNotEmpty ? Colors.white : Colors.black87,
-                fontWeight:
-                value.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+            if (value.isNotEmpty)
+              const Icon(Icons.filter_alt, size: 14, color: Colors.white),
+            if (value.isNotEmpty) const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                value.isEmpty ? label : value,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: value.isNotEmpty ? Colors.white : Colors.black87,
+                  fontWeight: value.isNotEmpty
+                      ? FontWeight.w600
+                      : FontWeight.normal,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 4),
@@ -418,7 +556,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
       itemBuilder: (context) => [
         PopupMenuItem<String>(value: '', child: Text('Semua $label')),
         ...items.map(
-              (item) => PopupMenuItem<String>(value: item, child: Text(item)),
+          (item) => PopupMenuItem<String>(value: item, child: Text(item)),
         ),
       ],
     );
@@ -450,8 +588,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                   color: Colors.black87,
                 ),
               ),
-              Icon(isEntry ? Icons.login : Icons.logout,
-                  color: Colors.black87),
+              Icon(isEntry ? Icons.login : Icons.logout, color: Colors.black87),
             ],
           ),
           const SizedBox(height: 8),
@@ -461,8 +598,10 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
               const SizedBox(width: 4),
               Text(
                 statusText,
-                style:
-                TextStyle(color: statusColor, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: statusColor,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -470,16 +609,16 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(item['date'],
-                  style: const TextStyle(
-                      color: Colors.black54, fontSize: 13)),
+              Text(
+                item['date'],
+                style: const TextStyle(color: Colors.black54, fontSize: 13),
+              ),
               GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          DetailKendaraanPage(data: item),
+                      builder: (context) => DetailKendaraanPage(data: item),
                     ),
                   );
                 },

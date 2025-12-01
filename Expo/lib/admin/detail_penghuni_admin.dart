@@ -13,7 +13,7 @@ class DetailPenghuniAdminPage extends StatelessWidget {
       backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
         children: [
-          const PageHeader(title: "Penghuni"),
+          const PageHeader(title: "Penghuni", showBackButton: false),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
@@ -86,6 +86,33 @@ class DetailPenghuniAdminPage extends StatelessWidget {
                           },
                         ),
                       ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.arrow_back_ios_new,
+                        color: Color(0xFF7C68BE),
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),

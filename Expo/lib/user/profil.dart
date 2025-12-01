@@ -1,9 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:expo/user/daftar_kendaraan.dart';
 import 'package:expo/user/notifikasi.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class ProfilPage extends StatelessWidget {
+class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
+
+  @override
+  State<ProfilPage> createState() => _ProfilPageState();
+}
+
+class _ProfilPageState extends State<ProfilPage> {
+  int _unverifiedCount = 0;
+  int _verifiedCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchVehicleStats();
+  }
+
+  Future<void> _fetchVehicleStats() async {
+    final storage = GetStorage();
+    final userId = storage.read("userId");
+
+    if (userId == null) return;
+
+    try {
+      // 1. Fetch Verified Count from 'plat_terdaftar'
+      final verifiedSnap = await FirebaseFirestore.instance
+          .collection('plat_terdaftar')
+          .where('ownerId', isEqualTo: userId)
+          .get();
+
+      int verified = verifiedSnap.docs.length;
+
+      // 2. Fetch Unverified Count from 'kendaraan_request' (status == 'pending')
+      final unverifiedSnap = await FirebaseFirestore.instance
+          .collection('kendaraan_request')
+          .where('ownerId', isEqualTo: userId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      int unverified = unverifiedSnap.docs.length;
+
+      if (mounted) {
+        setState(() {
+          _unverifiedCount = unverified;
+          _verifiedCount = verified;
+        });
+      }
+    } catch (e) {
+      print("Error fetching stats: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,22 +114,28 @@ class ProfilPage extends StatelessWidget {
                   topRight: Radius.circular(30),
                 ),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 80), // Space for avatar
-                    _buildProfileInfo(),
-                    const SizedBox(height: 20),
-                    _buildStatsSection(context),
-                    const SizedBox(height: 20),
-                    _buildContactSection(),
-                    const SizedBox(height: 20),
-                    _buildAccountSection(),
-                    const SizedBox(height: 20),
-                    _buildSettingsSection(),
-                    const SizedBox(height: 30),
-                  ],
-                ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 80), // Space for avatar
+                  _buildProfileInfo(),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: 30),
+                      child: Column(
+                        children: [
+                          _buildStatsSection(context),
+                          const SizedBox(height: 20),
+                          _buildContactSection(),
+                          const SizedBox(height: 20),
+                          _buildAccountSection(),
+                          const SizedBox(height: 20),
+                          _buildSettingsSection(context),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -181,9 +238,13 @@ class ProfilPage extends StatelessWidget {
                               builder: (context) =>
                                   const DaftarKendaraanPage(initialFilter: 0),
                             ),
-                          );
+                          ).then((_) => _fetchVehicleStats());
                         },
-                        child: _buildStatCard("Unverified", "1", Colors.orange),
+                        child: _buildStatCard(
+                          "Unverified",
+                          _unverifiedCount.toString(),
+                          Colors.orange,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -196,9 +257,13 @@ class ProfilPage extends StatelessWidget {
                               builder: (context) =>
                                   const DaftarKendaraanPage(initialFilter: 1),
                             ),
-                          );
+                          ).then((_) => _fetchVehicleStats());
                         },
-                        child: _buildStatCard("Verified", "2", Colors.green),
+                        child: _buildStatCard(
+                          "Verified",
+                          _verifiedCount.toString(),
+                          Colors.green,
+                        ),
                       ),
                     ),
                   ],
@@ -239,6 +304,7 @@ class ProfilPage extends StatelessWidget {
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -280,7 +346,7 @@ class ProfilPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingsSection() {
+  Widget _buildSettingsSection(BuildContext context) {
     return _buildSectionContainer(
       title: "Pengaturan",
       children: [
@@ -290,11 +356,26 @@ class ProfilPage extends StatelessWidget {
           hasArrow: true,
           isFirst: true,
         ),
-        _buildListTile(
-          Icons.help,
-          "FAQ dan Bantuan",
-          hasArrow: true,
-          isLast: true,
+        _buildListTile(Icons.help, "FAQ dan Bantuan", hasArrow: true),
+        GestureDetector(
+          onTap: () async {
+            final storage = GetStorage();
+            await storage.erase();
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/',
+              (Route<dynamic> route) => false,
+            );
+          },
+          child: _buildListTile(
+            Icons.logout,
+            "Keluar",
+            hasArrow: false,
+            isLast: true,
+            showBorder: false,
+            iconColor: Colors.red,
+            textColor: Colors.red,
+          ),
         ),
       ],
     );
@@ -352,6 +433,8 @@ class ProfilPage extends StatelessWidget {
     bool isSingle = false,
     bool showBorder = true,
     double fontSize = 16,
+    Color? iconColor,
+    Color? textColor,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -364,11 +447,15 @@ class ProfilPage extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Color(0x337C68BE), // Light purple icon bg (0.2 opacity)
+            decoration: BoxDecoration(
+              color: (iconColor ?? const Color(0xFF7C68BE)).withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 20, color: const Color(0xFF7C68BE)),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor ?? const Color(0xFF7C68BE),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -376,7 +463,7 @@ class ProfilPage extends StatelessWidget {
               title,
               style: TextStyle(
                 fontSize: fontSize,
-                color: Colors.black87,
+                color: textColor ?? Colors.black87,
                 fontWeight: FontWeight.w500,
               ),
             ),

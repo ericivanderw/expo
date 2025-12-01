@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:expo/user/detail_kendaraan.dart';
+import 'package:expo/admin/detail_kendaraan_admin.dart';
 import 'package:rxdart/rxdart.dart';
 
 class RiwayatKendaraanAdminPage extends StatefulWidget {
   const RiwayatKendaraanAdminPage({super.key});
 
   @override
-  State<RiwayatKendaraanAdminPage> createState() => _RiwayatKendaraanAdminPageState();
+  State<RiwayatKendaraanAdminPage> createState() =>
+      _RiwayatKendaraanAdminPageState();
 }
 
 class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
@@ -15,6 +16,43 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
   String _searchQuery = '';
   String _statusFilter = '';
   String _jenisFilter = '';
+  DateTimeRange? _selectedDateRange;
+
+  String _monthName(int m) {
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Agt",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Des",
+    ];
+    return months[m - 1];
+  }
+
+  DateTime _parseDate(dynamic raw) {
+    if (raw == null) return DateTime(2000);
+    if (raw is Timestamp) return raw.toDate();
+    if (raw is String) {
+      try {
+        return DateTime.parse(raw);
+      } catch (_) {}
+    }
+    return DateTime(2000);
+  }
+
+  String _formatDate(dynamic raw) {
+    DateTime dt = _parseDate(raw);
+    return "${dt.day} ${_monthName(dt.month)} ${dt.year}, "
+        "${dt.hour.toString().padLeft(2, '0')}:"
+        "${dt.minute.toString().padLeft(2, '0')}";
+  }
 
   @override
   void dispose() {
@@ -22,89 +60,111 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     super.dispose();
   }
 
-  // 🔥 STREAM LOG MASUK
+  // STREAM MASUK
   Stream<List<Map<String, dynamic>>> getRiwayatStream() {
     return FirebaseFirestore.instance
         .collection('logs_masuk')
         .orderBy('waktu_masuk', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-
-        return {
-          "id": doc.id,
-          "plate": data['plat'] ?? '',
-          "type": data['jenis'] ?? '-',
-          "status": data['status'] ?? '',
-          "isEntry": true,
-          "date": data['waktu_masuk'] ?? '-',
-          "waktu_keluar": data['waktu_keluar'],
-        };
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final d = doc.data();
+            return {
+              "id": doc.id,
+              "plate": d['plat'] ?? '',
+              "type": d['jenis'] ?? '-',
+              "status": d['status'] ?? '',
+              "isEntry": true,
+              "date": _formatDate(d['waktu_masuk']),
+              "date_raw": _parseDate(d['waktu_masuk']),
+            };
+          }).toList();
+        });
   }
 
-  // 🔥 STREAM LOG KELUAR
+  // STREAM KELUAR
   Stream<List<Map<String, dynamic>>> getRiwayatStreamKeluar() {
     return FirebaseFirestore.instance
         .collection('logs_keluar')
         .orderBy('waktu_keluar', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-
-        return {
-          "id": doc.id,
-          "plate": data['plat'] ?? '',
-          "type": data['jenis'] ?? '-',
-          "status": data['status'] ?? '',
-          "isEntry": false,
-          "date": data['waktu_keluar'] ?? '-',
-          "waktu_keluar": data['waktu_keluar'],
-        };
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final d = doc.data();
+            return {
+              "id": doc.id,
+              "plate": d['plat'] ?? '',
+              "type": d['jenis'] ?? '-',
+              "status": d['status'] ?? '',
+              "isEntry": false,
+              "date": _formatDate(d['waktu_keluar']),
+              "date_raw": _parseDate(d['waktu_keluar']),
+            };
+          }).toList();
+        });
   }
 
-  // 🔥 GABUNGKAN LOG MASUK + KELUAR
-  Stream<List<Map<String, dynamic>>> getAllRiwayatStream() {
-    final masukStream = getRiwayatStream();
-    final keluarStream = getRiwayatStreamKeluar();
+  // STREAM jenis kendaraan terbaru
+  Stream<Map<String, String>> getVehicleTypesStream() {
+    return FirebaseFirestore.instance
+        .collection('kendaraan_request')
+        .snapshots()
+        .map((snapshot) {
+          final Map<String, String> types = {};
+          for (var doc in snapshot.docs) {
+            final d = doc.data();
+            if (d['plat'] != null && d['jenis'] != null) {
+              types[d['plat']] = d['jenis'];
+            }
+          }
+          return types;
+        });
+  }
 
-    return CombineLatestStream.combine2(
-      masukStream,
-      keluarStream,
-      (List<Map<String, dynamic>> masuk, List<Map<String, dynamic>> keluar) {
+  // GABUNG 3 STREAM
+  Stream<List<Map<String, dynamic>>> getAllRiwayatStream() {
+    return CombineLatestStream.combine3(
+      getRiwayatStream(),
+      getRiwayatStreamKeluar(),
+      getVehicleTypesStream(),
+      (masuk, keluar, types) {
         final all = [...masuk, ...keluar];
 
-        // Sort by date terbaru
-        all.sort((a, b) {
-          final aTime = a["date"] ?? "";
-          final bTime = b["date"] ?? "";
-          return bTime.compareTo(aTime);
-        });
+        for (var x in all) {
+          if (types.containsKey(x['plate'])) {
+            x['type'] = types[x['plate']];
+          }
+        }
 
+        all.sort((a, b) => b["date_raw"].compareTo(a["date_raw"]));
         return all;
       },
     );
   }
 
-  // 🔍 FILTERING
+  // FILTERING
   List<Map<String, dynamic>> filterData(List<Map<String, dynamic>> data) {
     return data.where((item) {
       final s = _searchQuery.toLowerCase();
 
-      final matchesSearch = s.isEmpty ||
+      final matchesSearch =
+          s.isEmpty ||
           item['plate'].toLowerCase().contains(s) ||
           item['type'].toLowerCase().contains(s);
 
-      final matchesStatus = _statusFilter.isEmpty || item['status'] == _statusFilter;
-
+      final matchesStatus =
+          _statusFilter.isEmpty || item['status'] == _statusFilter;
       final matchesJenis = _jenisFilter.isEmpty || item['type'] == _jenisFilter;
 
-      return matchesSearch && matchesStatus && matchesJenis;
+      bool matchesDate = true;
+      if (_selectedDateRange != null) {
+        final d = item['date_raw'];
+        final start = _selectedDateRange!.start;
+        final end = _selectedDateRange!.end.add(const Duration(days: 1));
+        matchesDate = d.isAfter(start) && d.isBefore(end);
+      }
+
+      return matchesSearch && matchesStatus && matchesJenis && matchesDate;
     }).toList();
   }
 
@@ -116,33 +176,35 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
         children: [
           _buildHeader(),
           const SizedBox(height: 20),
+
+          /// ⭐ FILTERS (JUSTIFY 3 KOLOM)
           _buildFilters(),
+
           const SizedBox(height: 10),
 
           Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: getAllRiwayatStream(), // 🔥 DIGANTI STREAM GABUNGAN  
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: getAllRiwayatStream(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return _emptyState();
-                }
+                    final filtered = filterData(snapshot.data!);
 
-                final filtered = filterData(snapshot.data!);
+                    if (filtered.isEmpty) return _emptyState();
 
-                if (filtered.isEmpty) return _emptyState();
-
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    return _buildHistoryItem(filtered[index]);
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                      itemCount: filtered.length,
+                      itemBuilder: (c, i) => _buildHistoryItem(filtered[i]),
+                    );
                   },
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
@@ -150,7 +212,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     );
   }
 
-  // 🟥 EMPTY VIEW
+  // EMPTY STATE
   Widget _emptyState() {
     return Center(
       child: Column(
@@ -167,17 +229,14 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     );
   }
 
-  // 🔵 HEADER UI
+  // HEADER
   Widget _buildHeader() {
     return LayoutBuilder(
       builder: (context, constraints) {
         double screenWidth = constraints.maxWidth;
-        double maxContentWidth = 600;
-        double defaultPadding = 16;
-        double horizontalPadding = (screenWidth - maxContentWidth) / 2;
-        if (horizontalPadding < defaultPadding) {
-          horizontalPadding = defaultPadding;
-        }
+        double maxWidth = 600;
+        double padding = (screenWidth - maxWidth) / 2;
+        if (padding < 16) padding = 16;
 
         return Container(
           width: double.infinity,
@@ -195,18 +254,12 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                20,
-                horizontalPadding,
-                30,
-              ),
+              padding: EdgeInsets.fromLTRB(padding, 20, padding, 30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +292,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                   ),
                   const SizedBox(height: 25),
 
-                  // 🔍 Search bar
+                  // SEARCH BAR
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
@@ -248,15 +301,16 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                     ),
                     child: TextField(
                       controller: _searchController,
-                      onChanged: (value) {
-                        setState(() => _searchQuery = value);
-                      },
+                      onChanged: (v) => setState(() => _searchQuery = v),
                       decoration: InputDecoration(
                         hintText: "Search plat/type",
                         border: InputBorder.none,
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.black54),
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.black54,
+                                ),
                                 onPressed: () {
                                   setState(() {
                                     _searchQuery = '';
@@ -265,7 +319,9 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                                 },
                               )
                             : const Icon(Icons.search, color: Colors.black54),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -278,36 +334,108 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     );
   }
 
-  // 🟣 FILTERS
+  // ⭐ FILTERS – versi JUSTIFY 3 KOLOM
   Widget _buildFilters() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          _buildFilterChip(
-            label: "Status",
-            value: _statusFilter,
-            items: ['masuk', 'keluar'],
-            onChanged: (value) {
-              setState(() => _statusFilter = value);
-            },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double width = constraints.maxWidth;
+        double spacing = 8;
+        // Subtract padding (16 * 2 = 32) and spacing (8 * 2 = 16)
+        double itemWidth = (width - 32 - (spacing * 2)) / 3;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              SizedBox(width: itemWidth, child: _buildDateFilter()),
+              SizedBox(width: spacing),
+              SizedBox(
+                width: itemWidth,
+                child: _buildFilterChip(
+                  label: "Status",
+                  value: _statusFilter,
+                  items: ['masuk', 'keluar'],
+                  onChanged: (v) => setState(() => _statusFilter = v),
+                ),
+              ),
+              SizedBox(width: spacing),
+              SizedBox(
+                width: itemWidth,
+                child: _buildFilterChip(
+                  label: "Jenis",
+                  value: _jenisFilter,
+                  items: ['Motor', 'Mobil'],
+                  onChanged: (v) => setState(() => _jenisFilter = v),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          _buildFilterChip(
-            label: "Jenis Kendaraan",
-            value: _jenisFilter,
-            items: ['Motor', 'Mobil'],
-            onChanged: (value) {
-              setState(() => _jenisFilter = value);
-            },
+        );
+      },
+    );
+  }
+
+  // DATE FILTER (UI tidak diubah)
+  Widget _buildDateFilter() {
+    bool selected = _selectedDateRange != null;
+
+    String label = "Tanggal";
+    if (selected) {
+      final s = _selectedDateRange!.start;
+      final e = _selectedDateRange!.end;
+      label =
+          "${s.day} ${_monthName(s.month)} - ${e.day} ${_monthName(e.month)}";
+    }
+
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDateRangePicker(
+          context: context,
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+          initialDateRange: _selectedDateRange,
+        );
+
+        if (picked != null) {
+          setState(() => _selectedDateRange = picked);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF7C68BE) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? const Color(0xFF7C68BE) : Colors.grey.shade300,
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (!selected)
+              const Icon(Icons.calendar_today, size: 14, color: Colors.black54)
+            else
+              GestureDetector(
+                onTap: () => setState(() => _selectedDateRange = null),
+                child: const Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: selected ? Colors.white : Colors.black87,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // CHIP BUILDER
+  // FILTER CHIP (UI sama)
   Widget _buildFilterChip({
     required String label,
     required String value,
@@ -317,16 +445,20 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     return PopupMenuButton<String>(
       onSelected: onChanged,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: value.isNotEmpty ? const Color(0xFF7C68BE) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: value.isNotEmpty ? const Color(0xFF7C68BE) : Colors.grey.shade300,
+            color: value.isNotEmpty
+                ? const Color(0xFF7C68BE)
+                : Colors.grey.shade300,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (value.isNotEmpty)
               const Icon(Icons.filter_alt, size: 14, color: Colors.white),
@@ -336,7 +468,6 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
               style: TextStyle(
                 fontSize: 12,
                 color: value.isNotEmpty ? Colors.white : Colors.black87,
-                fontWeight: value.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
             const SizedBox(width: 4),
@@ -349,16 +480,16 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
         ),
       ),
       itemBuilder: (context) => [
-        PopupMenuItem<String>(value: '', child: Text('Semua $label')),
-        ...items.map((item) => PopupMenuItem<String>(value: item, child: Text(item))),
+        PopupMenuItem(value: '', child: Text('Semua $label')),
+        ...items.map((item) => PopupMenuItem(value: item, child: Text(item))),
       ],
     );
   }
 
-  // 🟢 HISTORY ITEM CARD
+  // CARD ITEM
   Widget _buildHistoryItem(Map<String, dynamic> item) {
-    final bool isEntry = item['isEntry'];
-    final Color statusColor = isEntry ? Colors.green : Colors.red;
+    final isEntry = item['isEntry'];
+    final color = isEntry ? Colors.green : Colors.red;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -370,7 +501,6 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Plate + type
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -379,55 +509,45 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
                 ),
               ),
               Icon(isEntry ? Icons.login : Icons.logout, color: Colors.black87),
             ],
           ),
-
           const SizedBox(height: 8),
-
-          // Status row
           Row(
             children: [
-              Icon(Icons.check_circle, size: 16, color: statusColor),
+              Icon(Icons.check_circle, size: 16, color: color),
               const SizedBox(width: 4),
               Text(
                 item['status'],
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(color: color, fontWeight: FontWeight.w500),
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Date + detail
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 item['date'],
-                style: const TextStyle(color: Colors.black54, fontSize: 13),
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
               ),
               GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DetailKendaraanPage(data: item),
+                      builder: (_) => DetailKendaraanAdminPage(vehicle: item),
                     ),
                   );
                 },
                 child: const Text(
                   "See Details",
                   style: TextStyle(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
                     fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
               ),

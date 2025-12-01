@@ -22,14 +22,10 @@ import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_storage/get_storage.dart';
 
-
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -61,7 +57,7 @@ class MyApp extends StatelessWidget {
 
         // Admin routes
         '/admin/homepage': (context) => const AdminHomePage(),
-        '/admin/pengumuman': (context) => const AdminPengumumanPage(),
+        '/admin/pengumuman': (context) => const AdminHomePage(initialIndex: 1),
         '/admin/tambah_pengumuman': (context) => const TambahPengumumanPage(),
         '/admin/daftar_pengumuman': (context) => const DaftarPengumumanPage(),
         '/admin/detail_pengumuman': (context) => const DetailPengumumanPage(),

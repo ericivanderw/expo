@@ -39,7 +39,7 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
         return {
           'id': doc.id,
           'plate': d['plat'] ?? '',
-          'owner': d['merk'] ?? '',
+          'owner': d['ownerId'] ?? '',
           'vehicleName': d['merk'] ?? '',
           'color': "N/A",
           'type': d['jenis'] ?? '',

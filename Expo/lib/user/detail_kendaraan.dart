@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/appbarback.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class DetailKendaraanPage extends StatelessWidget {
   final Map<String, dynamic> data;
 
   const DetailKendaraanPage({super.key, required this.data});
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final bool isEntry = data['isEntry'] ?? true;
-    final Color statusColor = isEntry ? Colors.green : Colors.red;
     final String statusText = data['status'] ?? '-';
+    final bool isExit = statusText.toLowerCase() == 'keluar';
+    final Color statusColor = isExit ? Colors.red : Colors.green;
+    print("Detail Data: $data"); // Debug print
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -82,16 +86,44 @@ class DetailKendaraanPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Column(
-                    children: [
-                      _buildDetailField("Nama Pemilik", "Budi"),
-                      const SizedBox(height: 16),
-                      _buildDetailField("Plat Kendaraan", data['plate'] ?? '-'),
-                      const SizedBox(height: 16),
-                      _buildDetailField("Jenis Kendaraan", data['type'] ?? '-'),
-                      const SizedBox(height: 16),
-                      _buildDetailField("Tanggal & Waktu", data['date'] ?? '-'),
-                    ],
+                  child: FutureBuilder<Map<String, dynamic>>(
+                    future: _fetchVehicleDetails(data['plat'] ?? ''),
+                    builder: (context, snapshot) {
+                      String ownerName = "Loading...";
+                      String jenis = "Loading...";
+                      String date = "Loading...";
+
+                      if (snapshot.hasData) {
+                        ownerName = snapshot.data!['ownerName'] ?? '-';
+                        jenis = snapshot.data!['jenis'] ?? '-';
+                        date = snapshot.data!['date'] ?? '-';
+                      } else if (snapshot.hasError) {
+                        ownerName = "-";
+                        jenis = "-";
+                        date = "-";
+                      } else if (snapshot.connectionState ==
+                              ConnectionState.done &&
+                          !snapshot.hasData) {
+                        ownerName = "-";
+                        jenis = "-";
+                        date = "-";
+                      }
+
+                      return Column(
+                        children: [
+                          _buildDetailField("Nama Pemilik", ownerName),
+                          const SizedBox(height: 16),
+                          _buildDetailField(
+                            "Plat Kendaraan",
+                            data['plat'] ?? '-',
+                          ),
+                          const SizedBox(height: 16),
+                          _buildDetailField("Jenis Kendaraan", jenis),
+                          const SizedBox(height: 16),
+                          _buildDetailField("Tanggal & Waktu", date),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
@@ -130,5 +162,54 @@ class DetailKendaraanPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> _fetchVehicleDetails(String plat) async {
+    if (plat.isEmpty) return {};
+    try {
+      // 1. Cari kendaraan di kendaraan_request berdasarkan plat
+      final vehicleQuery = await FirebaseFirestore.instance
+          .collection('kendaraan_request')
+          .where('plat', isEqualTo: plat)
+          .limit(1)
+          .get();
+
+      if (vehicleQuery.docs.isEmpty) return {};
+
+      final vehicleDoc = vehicleQuery.docs.first;
+      final vehicleData = vehicleDoc.data();
+      final ownerId = vehicleData['ownerId'];
+      final jenis = vehicleData['jenis'] ?? '-';
+
+      // Format Date
+      String dateStr = '-';
+      if (vehicleData['createdAt'] != null) {
+        if (vehicleData['createdAt'] is Timestamp) {
+          DateTime dt = (vehicleData['createdAt'] as Timestamp).toDate();
+          dateStr = "${dt.day}/${dt.month}/${dt.year} ${dt.hour}:${dt.minute}";
+        } else {
+          dateStr = vehicleData['createdAt'].toString();
+        }
+      }
+
+      // 2. Cari nama user di users berdasarkan ownerId
+      String ownerName = '-';
+      if (ownerId != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(ownerId)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          ownerName = userData['nama'] ?? userData['username'] ?? '-';
+        }
+      }
+
+      return {'ownerName': ownerName, 'jenis': jenis, 'date': dateStr};
+    } catch (e) {
+      print("Error fetching vehicle details: $e");
+      return {};
+    }
   }
 }

@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expo/widgets/button.dart';
 import 'package:get_storage/get_storage.dart';
 
-
 class SignInMergedPage extends StatefulWidget {
   const SignInMergedPage({super.key});
 
@@ -72,14 +71,13 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
         Navigator.pushReplacementNamed(context, '/user/homepage');
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login berhasil")),
-      );
-
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Login berhasil")));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
 
     setState(() => _loading = false);
@@ -124,15 +122,15 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                 end: Alignment.bottomCenter,
                 colors: _isSignInFormVisible
                     ? [
-                  const Color(0xFF2E1A47),
-                  const Color(0xFF1A0F29),
-                  Colors.black,
-                ]
+                        const Color(0xFF2E1A47),
+                        const Color(0xFF1A0F29),
+                        Colors.black,
+                      ]
                     : [
-                  const Color(0xFF8C6CCF),
-                  const Color(0xFFA890D9),
-                  Colors.white,
-                ],
+                        const Color(0xFF8C6CCF),
+                        const Color(0xFFA890D9),
+                        Colors.white,
+                      ],
               ),
             ),
           ),
@@ -158,7 +156,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                         Column(
                           children: [
                             Text(
-                              "Gate Smarter, Life Better.",
+                              "Gate Smarter, Life Better",
                               style: TextStyle(
                                 fontSize: titleFont,
                                 fontWeight: FontWeight.bold,
@@ -211,8 +209,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                 ? (width - logoWidth2) / 2
                 : (width - logoSize1) / 2,
             width: _isSignInFormVisible ? logoWidth2 : logoSize1,
-            height:
-            _isSignInFormVisible ? logoWidth2 * 0.8 : logoSize1 * 0.8,
+            height: _isSignInFormVisible ? logoWidth2 * 0.8 : logoSize1 * 0.8,
             child: Image.asset('assets/logo.png', fit: BoxFit.contain),
           ),
 
@@ -277,7 +274,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                         SizedBox(height: height * 0.035),
 
                         const Text(
-                          "Email",
+                          "Username",
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.black87,
@@ -324,16 +321,11 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                                       setState(() => _rememberMe = val ?? true),
                                   activeColor: Colors.deepPurple,
                                 ),
-                                const Text("Remember Me",
-                                    style: TextStyle(fontSize: 13)),
+                                const Text(
+                                  "Remember Me",
+                                  style: TextStyle(fontSize: 13),
+                                ),
                               ],
-                            ),
-                            const Text(
-                              "Forgot Password",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.deepPurple,
-                              ),
                             ),
                           ],
                         ),

@@ -36,33 +36,75 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
     }
 
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('kendaraan_request')
+      List<Map<String, dynamic>> allVehicles = [];
+
+      // 1. Fetch Verified Vehicles from 'plat_terdaftar'
+      final verifiedSnap = await FirebaseFirestore.instance
+          .collection('plat_terdaftar')
           .where('ownerId', isEqualTo: userId)
           .get();
 
-      print("Jumlah data ditemukan: ${snapshot.docs.length}");
-
-      for (var doc in snapshot.docs) {
-        print("DOC ID: ${doc.id} => ${doc.data()}");
-      }
-
-      final data = snapshot.docs.map((doc) {
+      final verifiedData = verifiedSnap.docs.map((doc) {
         final d = doc.data();
         return {
           'id': doc.id,
           'licensePlate': d['plat'] ?? 'Unknown',
-          'status': d['status'] ?? 'pending',
-          'statusColor': _getStatusColor(d['status']),
-          'ownerName': d['merk'],      // atau nama user kalau ada
-          'address': d['jenis'],       // sementara isi jenis kendaraan
-          'type': d['jenis'],
-          'arrivalDate': (d['createdAt'] as Timestamp).toDate().toString(),
+          'status': 'verified',
+          'statusColor': Colors.green,
+          'ownerName': d['merk'] ?? '-', // Merk as owner name placeholder
+          'address': d['jenis'] ?? '-',
+          'type': d['jenis'] ?? '-',
+          'arrivalDate': d['createdAt'] != null
+              ? (d['createdAt'] as Timestamp).toDate().toString()
+              : '-',
         };
       }).toList();
 
+      allVehicles.addAll(verifiedData);
+
+      // 2. Fetch Pending/Rejected from 'kendaraan_request'
+      final requestSnap = await FirebaseFirestore.instance
+          .collection('kendaraan_request')
+          .where('ownerId', isEqualTo: userId)
+          .get();
+
+      final requestData = requestSnap.docs
+          .map((doc) {
+            final d = doc.data();
+            String rawStatus = d['status'] ?? 'pending';
+            String normalizedStatus = 'pending';
+
+            if (rawStatus == 'Approved' || rawStatus == 'verified') {
+              // Skip approved/verified requests as they should be in plat_terdaftar
+              return null;
+            } else if (rawStatus == 'Rejected') {
+              normalizedStatus =
+                  'expired'; // Mapping Rejected to Expired/Rejected tab
+            } else {
+              normalizedStatus = 'pending';
+            }
+
+            return {
+              'id': doc.id,
+              'licensePlate': d['plat'] ?? 'Unknown',
+              'status': normalizedStatus,
+              'statusColor': _getStatusColor(normalizedStatus),
+              'ownerName': d['merk'],
+              'address': d['jenis'],
+              'type': d['jenis'],
+              'arrivalDate': d['createdAt'] != null
+                  ? (d['createdAt'] as Timestamp).toDate().toString()
+                  : '-',
+            };
+          })
+          .where((e) => e != null)
+          .cast<Map<String, dynamic>>()
+          .toList();
+
+      allVehicles.addAll(requestData);
+
       setState(() {
-        _vehicles = data;
+        _vehicles = allVehicles;
         _loading = false;
       });
     } catch (e) {
@@ -97,52 +139,61 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      body: Stack(
+      body: Column(
         children: [
-          PageHeader(
-            title: "Kendaraanku",
-            showBackButton: false,
-            rightIcon: Image.asset(
-              'assets/icon-list.png',
-              width: 60,
-              height: 60,
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: _loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 100),
-                        Center(
-                          child: ConstrainedBox(
-                            constraints:
-                            const BoxConstraints(maxWidth: 600),
-                            child: Column(
-                              children: [
-                                _buildStatsSection(),
-                                const SizedBox(height: 20),
-                                _buildFilterSection(),
-                                const SizedBox(height: 10),
-                                _buildVehicleList(),
-                                const SizedBox(height: 100),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+          Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: PageHeader(
+                  title: "Kendaraanku",
+                  showBackButton: true,
+                  rightIcon: Image.asset(
+                    'assets/icon-list.png',
+                    width: 60,
+                    height: 60,
                   ),
                 ),
-              ],
-            ),
+              ),
+              SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 100), // Adjusted for header height
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 600),
+                        child: Column(
+                          children: [
+                            _buildStatsSection(),
+                            const SizedBox(height: 20),
+                            _buildFilterSection(),
+                            const SizedBox(height: 10),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-
-          Positioned(bottom: 20, left: 20, right: 20, child: _buildAddButton()),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: _buildVehicleList(),
+                    ),
+                  ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(20),
+            child: _buildAddButton(),
+          ),
         ],
       ),
     );
@@ -176,13 +227,19 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
             Row(
               children: [
                 Expanded(
-                  child: _buildStatCard("pending", _pendingCount.toString(),
-                      Colors.orange),
+                  child: _buildStatCard(
+                    "pending",
+                    _pendingCount.toString(),
+                    Colors.orange,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildStatCard(
-                      "Verified", _verifiedCount.toString(), Colors.green),
+                    "Verified",
+                    _verifiedCount.toString(),
+                    Colors.green,
+                  ),
                 ),
               ],
             ),
@@ -206,8 +263,10 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
             children: [
               Icon(Icons.circle, size: 10, color: color),
               const SizedBox(width: 6),
-              Text(label,
-                  style: const TextStyle(fontSize: 14, color: Colors.black54)),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -275,7 +334,9 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color.fromARGB(255, 241, 144, 87)
+                    ? (label == 'verified'
+                          ? Colors.green
+                          : const Color.fromARGB(255, 241, 144, 87))
                     : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -296,8 +357,6 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
 
   Widget _buildVehicleList() {
     return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: _filteredVehicles.length,
       itemBuilder: (context, index) {
@@ -313,15 +372,8 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailKendaraanViewPage(
-              namaPemilik: vehicle['ownerName'] ?? 'Unknown',
-              alamat: vehicle['address'] ?? 'Unknown',
-              jenisKendaraan: vehicle['type'] ?? 'Unknown',
-              status: vehicle['status'] ?? 'Unknown',
-              kedatangan: vehicle['arrivalDate'],
-              platKendaraan: vehicle['licensePlate'] ?? 'Unknown',
-              fotoKendaraan: null,
-            ),
+            builder: (context) =>
+                DetailKendaraanViewPage(vehicleId: vehicle['id']),
           ),
         );
       },
@@ -359,8 +411,11 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.circle,
-                          size: 8, color: vehicle['statusColor']),
+                      Icon(
+                        Icons.circle,
+                        size: 8,
+                        color: vehicle['statusColor'],
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         vehicle['status'],
@@ -387,13 +442,14 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
         constraints: const BoxConstraints(maxWidth: 600),
         child: CustomButton(
           text: "Tambah Kendaraan",
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const TambahKendaraanPage(),
               ),
             );
+            _loadVehicles();
           },
         ),
       ),

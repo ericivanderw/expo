@@ -58,13 +58,10 @@ class PageHeader extends StatelessWidget {
                                 shape: BoxShape.circle,
                               ),
                               child: const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.only(left: 4),
-                                  child: Icon(
-                                    Icons.arrow_back_ios_new,
-                                    color: Color(0xFF7C68BE),
-                                    size: 20,
-                                  ),
+                                child: Icon(
+                                  Icons.arrow_back_ios_new,
+                                  color: Color(0xFF7C68BE),
+                                  size: 20,
                                 ),
                               ),
                             ),

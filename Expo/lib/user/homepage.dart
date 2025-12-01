@@ -3,6 +3,8 @@ import 'package:expo/user/riwayat_kendaraan.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/bottom_navbar.dart';
 import 'package:expo/user/pengumuman.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomePageUser extends StatefulWidget {
   const HomePageUser({super.key});
@@ -129,17 +131,86 @@ class _HomePageUserState extends State<HomePageUser> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          "Halo, Budi!",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      children: [
+                        Builder(
+                          builder: (context) {
+                            final storage = GetStorage();
+                            final userId = storage.read('userId');
+
+                            if (userId == null) {
+                              return const Text(
+                                "Halo, User!",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }
+
+                            return StreamBuilder<DocumentSnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(userId)
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Text(
+                                    "Halo, ...",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                }
+
+                                if (snapshot.hasError) {
+                                  return const Text(
+                                    "Halo, user!",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                }
+
+                                if (!snapshot.hasData ||
+                                    !snapshot.data!.exists) {
+                                  return const Text(
+                                    "Halo, user!",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                }
+
+                                var userData =
+                                    snapshot.data!.data()
+                                        as Map<String, dynamic>;
+                                String nama =
+                                    userData['nama'] ??
+                                    userData['username'] ??
+                                    'User';
+
+                                return Text(
+                                  "Halo, $nama!",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
-                        SizedBox(height: 4),
-                        Text(
+                        const SizedBox(height: 4),
+                        const Text(
                           "Selamat Datang di Entrify",
                           style: TextStyle(color: Colors.white, fontSize: 14),
                         ),
@@ -213,11 +284,6 @@ class _HomePageUserState extends State<HomePageUser> {
                     onTap: () {
                       _onItemTapped(2);
                     },
-                  ),
-                  _menuItem(
-                    icon: Icons.payment,
-                    title: "Pembayaran\nTagihan",
-                    onTap: () {},
                   ),
                 ],
               ),
@@ -320,8 +386,20 @@ class _HomePageUserState extends State<HomePageUser> {
   }
 
   Widget _pengumumanItem() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Container(

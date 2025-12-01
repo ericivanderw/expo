@@ -1,14 +1,140 @@
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/appbarback.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
-class DetailKendaraanAdminPage extends StatelessWidget {
+class DetailKendaraanAdminPage extends StatefulWidget {
   final Map<String, dynamic> vehicle;
 
   const DetailKendaraanAdminPage({super.key, required this.vehicle});
 
   @override
+  State<DetailKendaraanAdminPage> createState() =>
+      _DetailKendaraanAdminPageState();
+}
+
+class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
+  late String _ownerName;
+  late String _vehicleType;
+  late String _plate;
+
+  String _merk = '-';
+  String _keterangan = '-';
+  String _foto = '';
+  String _registeredDate = '-';
+
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    print("🔥 Detail Kendaraan Page OPENED!");
+    print("Vehicle data received: ${widget.vehicle}");
+
+    _plate = widget.vehicle['plat'] ?? widget.vehicle['plate'] ?? '';
+    _ownerName = widget.vehicle['owner'] ?? '-';
+    _vehicleType = widget.vehicle['jenis'] ?? widget.vehicle['type'] ?? '-';
+
+    print("Plat extracted: $_plate");
+
+    _fetchDetails();
+  }
+
+  Future<void> _fetchDetails() async {
+    try {
+      if (_plate.isEmpty) {
+        print("⚠️ Plat kendaraan kosong! Stop fetch.");
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      Map<String, dynamic>? data;
+
+      print("🔍 Mencari di collection plat_terdaftar...");
+      final platSnap = await FirebaseFirestore.instance
+          .collection('plat_terdaftar')
+          .where('plat', isEqualTo: _plate)
+          .limit(1)
+          .get();
+
+      if (platSnap.docs.isNotEmpty) {
+        print("📌 Data ditemukan di plat_terdaftar!");
+        data = platSnap.docs.first.data();
+      } else {
+        print("❌ Tidak ditemukan di plat_terdaftar. Coba kendaraan_request...");
+
+        final reqSnap = await FirebaseFirestore.instance
+            .collection('kendaraan_request')
+            .where('plat', isEqualTo: _plate)
+            .limit(1)
+            .get();
+
+        if (reqSnap.docs.isNotEmpty) {
+          print("📌 Data ditemukan di kendaraan_request!");
+          data = reqSnap.docs.first.data();
+        } else {
+          print("❌ Tidak ditemukan juga di kendaraan_request");
+        }
+      }
+
+      if (data != null) {
+        print("📦 Data kendaraan ditemukan: $data");
+        final d = data;
+        final ownerId = d['ownerId'];
+
+        setState(() {
+          _vehicleType = d['jenis'] ?? _vehicleType;
+          _merk = d['merk'] ?? '-';
+          _keterangan = d['keterangan'] ?? '-';
+          _foto = d['foto'] ?? '';
+
+          if (d['createdAt'] != null) {
+            if (d['createdAt'] is Timestamp) {
+              _registeredDate = DateFormat(
+                'd MMM yyyy, HH:mm',
+              ).format((d['createdAt'] as Timestamp).toDate());
+            } else {
+              _registeredDate = d['createdAt'].toString();
+            }
+          }
+        });
+
+        if (ownerId != null) {
+          print("🔍 Cari owner dengan ID: $ownerId");
+
+          final userSnap = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(ownerId)
+              .get();
+
+          if (userSnap.exists) {
+            final userData = userSnap.data();
+            print("👤 Data owner ditemukan: $userData");
+
+            setState(() {
+              _ownerName = userData?['username'] ?? _ownerName;
+            });
+          } else {
+            print("⚠️ Owner dengan ID $ownerId tidak ditemukan");
+          }
+        } else {
+          print("⚠️ OwnerId tidak ada di data kendaraan");
+        }
+      }
+    } catch (e) {
+      print("❌ ERROR saat fetch details: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        print("✔ Fetch selesai");
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isKeluar = vehicle['status'] == 'Keluar';
+    final status = widget.vehicle['status']?.toString().toLowerCase() ?? '';
+    final isKeluar = status == 'keluar';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -16,8 +142,8 @@ class DetailKendaraanAdminPage extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -34,63 +160,93 @@ class DetailKendaraanAdminPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Status section
+                  // Status
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Text(
-                          'Status',
+                          'Status Log',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
                           ),
                         ),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              size: 20,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isKeluar
+                                ? Colors.red.withOpacity(0.1)
+                                : Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
                               color: isKeluar ? Colors.red : Colors.green,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              vehicle['status'],
-                              style: TextStyle(
-                                fontSize: 16,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isKeluar ? Icons.logout : Icons.login,
+                                size: 16,
                                 color: isKeluar ? Colors.red : Colors.green,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 6),
+                              Text(
+                                widget.vehicle['status'] ?? '-',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: isKeluar ? Colors.red : Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
 
-                  // Detail boxes
                   Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16,
-                      top: 6,
-                      right: 16,
-                      bottom: 16,
-                    ),
-                    child: Column(
-                      children: [
-                        _buildDetailBox('Nama Pemilik', vehicle['owner']),
-                        const SizedBox(height: 12),
-                        _buildDetailBox('Plat Kendaraan', vehicle['plate']),
-                        const SizedBox(height: 12),
-                        _buildDetailBox('Jenis Kendaraan', vehicle['type']),
-                        const SizedBox(height: 12),
-                        _buildDetailBox('Tanggal & Waktu', vehicle['date']),
-                      ],
-                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                    child: _isLoading
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_foto.isNotEmpty && _foto != 'assets/car.png')
+                                Container(
+                                  height: 200,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    image: DecorationImage(
+                                      image: NetworkImage(_foto),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 16),
+
+                              _buildDetailBox('Nama Pemilik', _ownerName),
+                              const SizedBox(height: 12),
+                              _buildDetailBox('Plat Kendaraan', _plate),
+                              const SizedBox(height: 12),
+                              _buildDetailBox('Jenis Kendaraan', _vehicleType),
+                              const SizedBox(height: 12),
+                              _buildDetailBox(
+                                'Waktu Log (Masuk/Keluar)',
+                                widget.vehicle['date'] ?? '-',
+                              ),
+                            ],
+                          ),
                   ),
                 ],
               ),
@@ -108,28 +264,14 @@ class DetailKendaraanAdminPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black87,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.normal,
-            ),
-          ),
+          Text(value, style: TextStyle(color: Colors.grey.shade700)),
         ],
       ),
     );

@@ -71,14 +71,52 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
               ),
             ),
           ),
+          _buildAddButton(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/admin/tambah_penghuni');
-        },
-        backgroundColor: const Color(0xFF7C68BE),
-        child: const Icon(Icons.add, color: Colors.white),
+    );
+  }
+
+  Widget _buildAddButton() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      color: Colors.white,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF8C6CCF), Color(0xFF5A3FAE)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/admin/tambah_penghuni');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              child: const Text(
+                "Tambah Penghuni",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -95,11 +133,14 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
           horizontalPadding = defaultPadding;
         }
 
+        double topPadding = MediaQuery.of(context).padding.top + 10;
+        if (topPadding < 40) topPadding = 40;
+
         return Container(
           width: double.infinity,
           padding: EdgeInsets.fromLTRB(
             horizontalPadding,
-            40, // Top padding for status bar
+            topPadding,
             horizontalPadding,
             30,
           ),
@@ -115,76 +156,63 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
-                          Icons.arrow_back_ios,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "Daftar Penghuni",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        "Data Penghuni Perumahan.",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                  // Placeholder for the bird/moon illustration
-                  Image.asset(
-                    'assets/icon-clock.png',
-                    width: 80, // Increased size
-                    height: 80,
-                    color: Colors.white.withOpacity(0.8), // Slight transparency
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE0E0E0), // Light grey background
-                        borderRadius: BorderRadius.circular(30),
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
                       ),
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                        decoration: const InputDecoration(
-                          hintText: "Search",
-                          border: InputBorder.none,
-                          suffixIcon: Icon(Icons.search, color: Colors.black54),
+                      child: const Center(
+                        child: Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Color(0xFF7C68BE),
+                          size: 20,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Icon(
-                    Icons.print_outlined, // Outline icon
-                    color: Colors.black54,
-                    size: 30,
+                  const Text(
+                    "Daftar Penghuni",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Image.asset(
+                    'assets/icon-clock.png',
+                    width: 40,
+                    height: 40,
+                    color: Colors.white.withOpacity(0.8),
                   ),
                 ],
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E0E0), // Light grey background
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  textAlign: TextAlign.left,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    hintText: "Search",
+                    border: InputBorder.none,
+                    suffixIcon: Icon(Icons.search, color: Colors.black54),
+                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
               ),
             ],
           ),

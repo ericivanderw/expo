@@ -52,6 +52,12 @@ dev_dependencies:
   lucide_icons: 
   line_icons: 
   carousel_slider: ^4.2.1
+  flutter_launcher_icons: ^0.14.2
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo.png"
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

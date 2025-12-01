@@ -4,20 +4,22 @@ import 'package:expo/admin/admin_pengumuman.dart';
 import 'package:expo/admin/riwayat_kendaraan_admin.dart';
 
 class AdminHomePage extends StatefulWidget {
-  const AdminHomePage({super.key});
+  final int initialIndex;
+  const AdminHomePage({super.key, this.initialIndex = 0});
 
   @override
   State<AdminHomePage> createState() => _AdminHomePageState();
 }
 
 class _AdminHomePageState extends State<AdminHomePage> {
-  int _currentIndex = 0;
+  late int _currentIndex;
   late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
   }
 
   @override
@@ -284,12 +286,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminPengumumanPage(),
-                        ),
-                      );
+                      _onItemTapped(1); // Switch to Pengumuman tab
                     },
                     child: const Text(
                       "See More",
@@ -297,6 +294,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                         fontSize: 14,
                         color: Colors.blueGrey,
                         fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
                       ),
                     ),
                   ),
