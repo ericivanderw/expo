@@ -19,7 +19,9 @@ class _DetailKendaraanApprovalAdminPageState
   @override
   void initState() {
     super.initState();
-    _selectedStatus = widget.vehicle['status'] ?? 'Menunggu';
+    _selectedStatus = (widget.vehicle['status'] ?? 'pending')
+        .toString()
+        .toLowerCase();
   }
 
   Future<void> updateStatus(String newStatus) async {
@@ -35,8 +37,8 @@ class _DetailKendaraanApprovalAdminPageState
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Jika Approved → masukkan ke plat_terdaftar
-      if (newStatus == 'Approved') {
+      // Jika approved → masukkan ke plat_terdaftar
+      if (newStatus == 'approved') {
         await firestore.collection('plat_terdaftar').add({
           'plat': v['plate'] ?? '',
           'merk': v['merk'] ?? '',
@@ -63,10 +65,10 @@ class _DetailKendaraanApprovalAdminPageState
     Color statusColor;
     String statusText;
 
-    if (_selectedStatus == 'Approved') {
+    if (_selectedStatus == 'approved') {
       statusColor = Colors.green;
       statusText = 'Verified';
-    } else if (_selectedStatus == 'Rejected') {
+    } else if (_selectedStatus == 'rejected') {
       statusColor = Colors.red;
       statusText = 'Rejected';
     } else {
@@ -78,7 +80,7 @@ class _DetailKendaraanApprovalAdminPageState
       backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
         children: [
-          const PageHeader(title: 'Detail Kendaraan'),
+          const PageHeader(title: 'Detail Kendaraan', showBackButton: false),
 
           SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 120, 20, 100),
@@ -127,7 +129,9 @@ class _DetailKendaraanApprovalAdminPageState
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: statusColor,
                               borderRadius: BorderRadius.circular(20),
@@ -147,41 +151,59 @@ class _DetailKendaraanApprovalAdminPageState
                       const SizedBox(height: 24),
 
                       // DETAIL BOXES
-                      _buildDetailBox('Nama Pemilik', widget.vehicle['owner'] ?? '-'),
+                      _buildDetailBox(
+                        'Nama Pemilik',
+                        widget.vehicle['owner'] ?? '-',
+                      ),
                       const SizedBox(height: 12),
-                      _buildDetailBox('Jenis Kendaraan', widget.vehicle['type'] ?? '-'),
+                      _buildDetailBox(
+                        'Jenis Kendaraan',
+                        widget.vehicle['type'] ?? '-',
+                      ),
                       const SizedBox(height: 12),
-                      _buildDetailBox('Plat Kendaraan', widget.vehicle['plate'] ?? '-'),
+                      _buildDetailBox(
+                        'Plat Kendaraan',
+                        widget.vehicle['plate'] ?? '-',
+                      ),
                       const SizedBox(height: 12),
-                      _buildDetailBox('Merk Kendaraan', widget.vehicle['merk'] ?? '-'),
+                      _buildDetailBox(
+                        'Merk Kendaraan',
+                        widget.vehicle['merk'] ?? '-',
+                      ),
                       const SizedBox(height: 12),
-                      _buildDetailBox('Keterangan', widget.vehicle['keterangan'] ?? '-'),
+                      _buildDetailBox(
+                        'Keterangan',
+                        widget.vehicle['keterangan'] ?? '-',
+                      ),
 
                       const SizedBox(height: 24),
 
                       const Text(
                         'Foto Kendaraan',
                         style: TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.bold),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 12),
 
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: widget.vehicle['fotoUrl'] != null &&
-                            widget.vehicle['fotoUrl'] != ""
+                        child:
+                            widget.vehicle['fotoUrl'] != null &&
+                                widget.vehicle['fotoUrl'] != ""
                             ? Image.network(
-                          widget.vehicle['fotoUrl'],
-                          width: double.infinity,
-                          height: 200,
-                          fit: BoxFit.cover,
-                        )
+                                widget.vehicle['fotoUrl'],
+                                width: double.infinity,
+                                height: 200,
+                                fit: BoxFit.cover,
+                              )
                             : Image.asset(
-                          'assets/car.png',
-                          width: double.infinity,
-                          height: 200,
-                          fit: BoxFit.cover,
-                        ),
+                                'assets/car.png',
+                                width: double.infinity,
+                                height: 200,
+                                fit: BoxFit.cover,
+                              ),
                       ),
                     ],
                   ),
@@ -191,8 +213,7 @@ class _DetailKendaraanApprovalAdminPageState
           ),
 
           // BUTTON APPROVE/REJECT
-          if (_selectedStatus != 'Approved' &&
-              _selectedStatus != 'Rejected')
+          if (_selectedStatus != 'approved' && _selectedStatus != 'rejected')
             Positioned(
               bottom: 0,
               left: 0,
@@ -203,7 +224,7 @@ class _DetailKendaraanApprovalAdminPageState
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => updateStatus("Approved"),
+                        onPressed: () => updateStatus("approved"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF65A278),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -214,14 +235,16 @@ class _DetailKendaraanApprovalAdminPageState
                         child: const Text(
                           'Approve',
                           style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => updateStatus("Rejected"),
+                        onPressed: () => updateStatus("rejected"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFA85656),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -232,7 +255,9 @@ class _DetailKendaraanApprovalAdminPageState
                         child: const Text(
                           'Reject',
                           style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -240,6 +265,40 @@ class _DetailKendaraanApprovalAdminPageState
                 ),
               ),
             ),
+
+          // CUSTOM BACK BUTTON (Positioned on top)
+          Positioned(
+            top: 0,
+            left: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 0, 0),
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Color(0xFF7C68BE),
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -257,14 +316,12 @@ class _DetailKendaraanApprovalAdminPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
           Text(
-            value?.toString() ?? '-',
-            style: const TextStyle(fontSize: 16),
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
+          const SizedBox(height: 4),
+          Text(value?.toString() ?? '-', style: const TextStyle(fontSize: 16)),
         ],
       ),
     );

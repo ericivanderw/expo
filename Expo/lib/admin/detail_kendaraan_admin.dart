@@ -42,27 +42,51 @@ class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
 
   Future<void> _fetchDetails() async {
     try {
-      if (_plate.isEmpty) {
-        print("⚠️ Plat kendaraan kosong! Stop fetch.");
+      final vehicleId = widget.vehicle['id'];
+
+      if (vehicleId == null && _plate.isEmpty) {
+        print("⚠️ ID dan Plat kendaraan kosong! Stop fetch.");
         setState(() => _isLoading = false);
         return;
       }
 
       Map<String, dynamic>? data;
+      String? ownerId;
 
-      print("🔍 Mencari di collection plat_terdaftar...");
-      final platSnap = await FirebaseFirestore.instance
-          .collection('plat_terdaftar')
-          .where('plat', isEqualTo: _plate)
-          .limit(1)
-          .get();
+      // 1. Try fetching by ID from kendaraan_request (most reliable for pending/rejected)
+      if (vehicleId != null) {
+        print("🔍 Mencari di kendaraan_request dengan ID: $vehicleId");
+        final reqDoc = await FirebaseFirestore.instance
+            .collection('kendaraan_request')
+            .doc(vehicleId)
+            .get();
 
-      if (platSnap.docs.isNotEmpty) {
-        print("📌 Data ditemukan di plat_terdaftar!");
-        data = platSnap.docs.first.data();
-      } else {
-        print("❌ Tidak ditemukan di plat_terdaftar. Coba kendaraan_request...");
+        if (reqDoc.exists) {
+          print("📌 Data ditemukan di kendaraan_request (by ID)!");
+          data = reqDoc.data();
+          ownerId = data?['ownerId'];
+        }
+      }
 
+      // 2. If not found or no ID, try plat_terdaftar by Plate (for verified)
+      if (data == null && _plate.isNotEmpty) {
+        print("🔍 Mencari di collection plat_terdaftar by Plate: $_plate");
+        final platSnap = await FirebaseFirestore.instance
+            .collection('plat_terdaftar')
+            .where('plat', isEqualTo: _plate)
+            .limit(1)
+            .get();
+
+        if (platSnap.docs.isNotEmpty) {
+          print("📌 Data ditemukan di plat_terdaftar!");
+          data = platSnap.docs.first.data();
+          ownerId = data?['ownerId'];
+        }
+      }
+
+      // 3. If still not found, try kendaraan_request by Plate (fallback)
+      if (data == null && _plate.isNotEmpty) {
+        print("🔍 Mencari di kendaraan_request by Plate: $_plate");
         final reqSnap = await FirebaseFirestore.instance
             .collection('kendaraan_request')
             .where('plat', isEqualTo: _plate)
@@ -70,23 +94,22 @@ class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
             .get();
 
         if (reqSnap.docs.isNotEmpty) {
-          print("📌 Data ditemukan di kendaraan_request!");
+          print("📌 Data ditemukan di kendaraan_request (by Plate)!");
           data = reqSnap.docs.first.data();
-        } else {
-          print("❌ Tidak ditemukan juga di kendaraan_request");
+          ownerId = data?['ownerId'];
         }
       }
 
       if (data != null) {
         print("📦 Data kendaraan ditemukan: $data");
         final d = data;
-        final ownerId = d['ownerId'];
 
         setState(() {
           _vehicleType = d['jenis'] ?? _vehicleType;
           _merk = d['merk'] ?? '-';
           _keterangan = d['keterangan'] ?? '-';
-          _foto = d['foto'] ?? '';
+          _foto =
+              d['foto'] ?? d['stnkUrl'] ?? ''; // Handle stnkUrl from request
 
           if (d['createdAt'] != null) {
             if (d['createdAt'] is Timestamp) {
@@ -112,7 +135,9 @@ class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
             print("👤 Data owner ditemukan: $userData");
 
             setState(() {
-              _ownerName = userData?['username'] ?? _ownerName;
+              // Prefer 'nama', fallback to 'username'
+              _ownerName =
+                  userData?['nama'] ?? userData?['username'] ?? _ownerName;
             });
           } else {
             print("⚠️ Owner dengan ID $ownerId tidak ditemukan");
@@ -120,6 +145,8 @@ class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
         } else {
           print("⚠️ OwnerId tidak ada di data kendaraan");
         }
+      } else {
+        print("❌ Data kendaraan tidak ditemukan dimanapun");
       }
     } catch (e) {
       print("❌ ERROR saat fetch details: $e");

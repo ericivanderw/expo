@@ -148,7 +148,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
         "alamat": _alamatController.text.trim(),
         "ownerId": ownerId,
         "stnkUrl": imageUrl ?? "",
-        "status": _selectedStatus, // Penghuni/Tamu
+        "status": "pending",
         "kedatangan": _selectedDate,
         "createdAt": FieldValue.serverTimestamp(),
       });

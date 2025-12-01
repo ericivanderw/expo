@@ -36,14 +36,25 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
       final vehicles = snapshot.docs.map((doc) {
         final d = doc.data();
 
+        String rawStatus = d['status']?.toString().toLowerCase() ?? 'pending';
+        String normalizedStatus = 'pending';
+
+        if (rawStatus == 'approved' || rawStatus == 'verified') {
+          normalizedStatus = 'approved';
+        } else if (rawStatus == 'rejected') {
+          normalizedStatus = 'rejected';
+        } else {
+          normalizedStatus = 'pending';
+        }
+
         return {
           'id': doc.id,
           'plate': d['plat'] ?? '',
-          'owner': d['ownerId'] ?? '',
+          'owner': d['merk'] ?? '',
           'vehicleName': d['merk'] ?? '',
           'color': "N/A",
           'type': d['jenis'] ?? '',
-          'status': d['status'] ?? 'pending',
+          'status': normalizedStatus,
           'date': d['createdAt'] != null
               ? (d['createdAt'] as Timestamp).toDate()
               : null,

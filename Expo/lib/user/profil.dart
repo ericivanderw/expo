@@ -36,14 +36,24 @@ class _ProfilPageState extends State<ProfilPage> {
 
       int verified = verifiedSnap.docs.length;
 
-      // 2. Fetch Unverified Count from 'kendaraan_request' (status == 'pending')
-      final unverifiedSnap = await FirebaseFirestore.instance
+      // 2. Fetch All Requests from 'kendaraan_request' to count Unverified
+      final requestSnap = await FirebaseFirestore.instance
           .collection('kendaraan_request')
           .where('ownerId', isEqualTo: userId)
-          .where('status', isEqualTo: 'pending')
           .get();
 
-      int unverified = unverifiedSnap.docs.length;
+      int unverified = 0;
+      for (var doc in requestSnap.docs) {
+        final data = doc.data();
+        final rawStatus = data['status']?.toString().toLowerCase() ?? 'pending';
+
+        // Normalize status: if not approved/verified/rejected, it's pending (unverified)
+        if (rawStatus != 'approved' &&
+            rawStatus != 'verified' &&
+            rawStatus != 'rejected') {
+          unverified++;
+        }
+      }
 
       if (mounted) {
         setState(() {

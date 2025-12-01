@@ -37,7 +37,10 @@ class DetailPenghuniAdminPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Resident Info Cards
-                        _buildInfoCard("Nama Pemilik", resident['nama'] ?? '-'),
+                        _buildInfoCard(
+                          "Nama Pemilik",
+                          resident['username'] ?? '-',
+                        ),
                         const SizedBox(height: 12),
                         _buildInfoCard("Alamat", resident['alamat'] ?? '-'),
 
