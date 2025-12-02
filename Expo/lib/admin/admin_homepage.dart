@@ -1,7 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/admin_bottom_navbar.dart';
 import 'package:expo/admin/admin_pengumuman.dart';
 import 'package:expo/admin/riwayat_kendaraan_admin.dart';
+
+import 'package:expo/admin/profil_admin.dart';
+import 'package:expo/admin/detail_pengumuman.dart';
 
 class AdminHomePage extends StatefulWidget {
   final int initialIndex;
@@ -57,7 +61,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           _buildHomeContent(),
           const AdminPengumumanPage(),
           const RiwayatKendaraanAdminPage(),
-          const Center(child: Text("Profile Page")), // Placeholder for Profile
+          const ProfilAdminPage(),
         ],
       ),
     );
@@ -213,11 +217,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
                       Navigator.pushNamed(context, '/admin/daftar_kendaraan');
                     },
                   ),
-                  _menuItem(
-                    icon: Icons.settings,
-                    title: "Pengelola",
-                    onTap: () {},
-                  ),
                 ],
               ),
             ],
@@ -306,9 +305,37 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
               const SizedBox(height: 16),
-              _pengumumanItem(),
-              _pengumumanItem(),
-              _pengumumanItem(),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('pengumuman')
+                    .where(
+                      'tanggal_kegiatan',
+                      isGreaterThanOrEqualTo: DateTime.now(),
+                    )
+                    .orderBy('tanggal_kegiatan')
+                    .limit(5)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const Center(child: Text('Something went wrong'));
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('Tidak ada pengumuman'));
+                  }
+
+                  return Column(
+                    children: snapshot.data!.docs.map((doc) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      return _pengumumanItem(data);
+                    }).toList(),
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -316,43 +343,68 @@ class _AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
-  Widget _pengumumanItem() {
+  Widget _pengumumanItem(Map<String, dynamic> data) {
+    String title = data['judul'] ?? 'No Title';
+    Timestamp? timestamp = data['tanggal_kegiatan'] as Timestamp?;
+    String dateStr = timestamp != null
+        ? "${timestamp.toDate().day}/${timestamp.toDate().month}/${timestamp.toDate().year}"
+        : "-";
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 55,
-            height: 55,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              image: const DecorationImage(
-                image: AssetImage("assets/gotongroyong.png"),
-                fit: BoxFit.cover,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DetailPengumumanPage(data: data),
+            ),
+          );
+        },
+        child: Row(
+          children: [
+            Container(
+              width: 55,
+              height: 55,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                image: const DecorationImage(
+                  image: AssetImage("assets/gotongroyong.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "[Kegiatan Bulanan] - Gotong Royong Bulanan",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, size: 14, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text("08:30", style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(dateStr, style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

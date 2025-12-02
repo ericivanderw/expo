@@ -49,7 +49,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
         return {
           'id': doc.id,
           'licensePlate': d['plat'] ?? 'Unknown',
-          'status': 'verified',
+          'status': 'Verified',
           'statusColor': Colors.green,
           'ownerName': d['merk'] ?? '-', // Merk as owner name placeholder
           'address': d['jenis'] ?? '-',
@@ -62,6 +62,8 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
 
       allVehicles.addAll(verifiedData);
 
+      final verifiedPlates = verifiedData.map((v) => v['licensePlate']).toSet();
+
       // 2. Fetch Pending/Rejected from 'kendaraan_request'
       final requestSnap = await FirebaseFirestore.instance
           .collection('kendaraan_request')
@@ -71,22 +73,28 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
       final requestData = requestSnap.docs
           .map((doc) {
             final d = doc.data();
-            String rawStatus = d['status'] ?? 'pending';
-            String normalizedStatus = 'pending';
+            // Robust normalization like in Admin page
+            String rawStatus =
+                d['status']?.toString().toLowerCase() ?? 'pending';
+            String normalizedStatus = 'Pending';
+            String plate = d['plat'] ?? 'Unknown';
 
-            if (rawStatus == 'Approved' || rawStatus == 'verified') {
-              // Skip approved/verified requests as they should be in plat_terdaftar
-              return null;
-            } else if (rawStatus == 'Rejected') {
-              normalizedStatus =
-                  'expired'; // Mapping Rejected to Expired/Rejected tab
+            if (rawStatus == 'approved' || rawStatus == 'verified') {
+              // Check if already in plat_terdaftar to avoid duplicates
+              if (verifiedPlates.contains(plate)) {
+                return null;
+              }
+              // Fallback: Show as Verified if not in plat_terdaftar yet
+              normalizedStatus = 'Verified';
+            } else if (rawStatus == 'rejected') {
+              normalizedStatus = 'Rejected';
             } else {
-              normalizedStatus = 'pending';
+              normalizedStatus = 'Pending';
             }
 
             return {
               'id': doc.id,
-              'licensePlate': d['plat'] ?? 'Unknown',
+              'licensePlate': plate,
               'status': normalizedStatus,
               'statusColor': _getStatusColor(normalizedStatus),
               'ownerName': d['merk'],
@@ -114,9 +122,9 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
 
   Color _getStatusColor(String? s) {
     switch (s) {
-      case "verified":
+      case "Verified":
         return Colors.green;
-      case "expired":
+      case "Rejected":
         return Colors.red;
       default:
         return Colors.orange; // Pending / Unverified
@@ -124,16 +132,16 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
   }
 
   List<Map<String, dynamic>> get _filteredVehicles {
-    final filterStatus = ['pending', 'verified', 'expired'][_selectedFilter];
+    final filterStatus = ['Pending', 'Verified', 'Rejected'][_selectedFilter];
     return _vehicles.where((v) => v['status'] == filterStatus).toList();
   }
 
   int get _pendingCount =>
-      _vehicles.where((v) => v['status'] == 'pending').length;
+      _vehicles.where((v) => v['status'] == 'Pending').length;
   int get _verifiedCount =>
-      _vehicles.where((v) => v['status'] == 'verified').length;
-  int get _expiredCount =>
-      _vehicles.where((v) => v['status'] == 'expired').length;
+      _vehicles.where((v) => v['status'] == 'Verified').length;
+  int get _rejectedCount =>
+      _vehicles.where((v) => v['status'] == 'Rejected').length;
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +236,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               children: [
                 Expanded(
                   child: _buildStatCard(
-                    "pending",
+                    "Pending",
                     _pendingCount.toString(),
                     Colors.orange,
                   ),
@@ -293,11 +301,11 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
         ),
         child: Row(
           children: [
-            Expanded(child: _buildFilterChip("pending", 0, _pendingCount)),
+            Expanded(child: _buildFilterChip("Pending", 0, _pendingCount)),
             const SizedBox(width: 6),
-            Expanded(child: _buildFilterChip("verified", 1, _verifiedCount)),
+            Expanded(child: _buildFilterChip("Verified", 1, _verifiedCount)),
             const SizedBox(width: 6),
-            Expanded(child: _buildFilterChip("expired", 2, _expiredCount)),
+            Expanded(child: _buildFilterChip("Rejected", 2, _rejectedCount)),
           ],
         ),
       ),
@@ -334,7 +342,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? (label == 'verified'
+                    ? (label == 'Verified'
                           ? Colors.green
                           : const Color.fromARGB(255, 241, 144, 87))
                     : Colors.grey.shade300,
@@ -356,13 +364,17 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
   }
 
   Widget _buildVehicleList() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: _filteredVehicles.length,
-      itemBuilder: (context, index) {
-        final vehicle = _filteredVehicles[index];
-        return _buildVehicleCard(vehicle);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadVehicles,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: _filteredVehicles.length,
+        itemBuilder: (context, index) {
+          final vehicle = _filteredVehicles[index];
+          return _buildVehicleCard(vehicle);
+        },
+      ),
     );
   }
 

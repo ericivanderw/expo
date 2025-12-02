@@ -5,6 +5,7 @@ import 'package:expo/widgets/bottom_navbar.dart';
 import 'package:expo/user/pengumuman.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expo/user/detail_pengumuman.dart';
 
 class HomePageUser extends StatefulWidget {
   const HomePageUser({super.key});
@@ -42,24 +43,50 @@ class _HomePageUserState extends State<HomePageUser> {
     });
   }
 
+  DateTime? currentBackPressTime;
+
+  Future<bool> _onWillPop() async {
+    if (_currentIndex != 0) {
+      _onItemTapped(0);
+      return false;
+    }
+
+    DateTime now = DateTime.now();
+    if (currentBackPressTime == null ||
+        now.difference(currentBackPressTime!) > const Duration(seconds: 2)) {
+      currentBackPressTime = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tekan sekali lagi untuk keluar'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      bottomNavigationBar: UserBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onItemTapped,
-      ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        physics: const BouncingScrollPhysics(), // Add bounce effect
-        children: [
-          _buildHomeContent(),
-          const Pengumuman(),
-          const RiwayatKendaraanPage(),
-          const ProfilPage(),
-        ],
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        bottomNavigationBar: UserBottomNavBar(
+          currentIndex: _currentIndex,
+          onTap: _onItemTapped,
+        ),
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: _onPageChanged,
+          physics: const BouncingScrollPhysics(), // Add bounce effect
+          children: [
+            _buildHomeContent(),
+            const Pengumuman(),
+            const RiwayatKendaraanPage(),
+            const ProfilPage(),
+          ],
+        ),
       ),
     );
   }
@@ -71,16 +98,13 @@ class _HomePageUserState extends State<HomePageUser> {
           _buildHeader(),
           Align(
             alignment: Alignment.topCenter,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 110),
-                  _buildMenuUtama(context),
-                  const SizedBox(height: 10),
-                  _buildPengumuman(context),
-                  const SizedBox(height: 80),
-                ],
-              ),
+            child: Column(
+              children: [
+                const SizedBox(height: 110),
+                _buildMenuUtama(context),
+                const SizedBox(height: 10),
+                Expanded(child: _buildPengumuman(context)),
+              ],
             ),
           ),
         ],
@@ -365,8 +389,6 @@ class _HomePageUserState extends State<HomePageUser> {
                       ),
                     ),
                   ),
-
-                  // ------------------------------------------------
                 ],
               ),
               const SizedBox(height: 6),
@@ -375,9 +397,44 @@ class _HomePageUserState extends State<HomePageUser> {
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
               const SizedBox(height: 16),
-              _pengumumanItem(),
-              _pengumumanItem(),
-              _pengumumanItem(),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('pengumuman')
+                      .where(
+                        'tanggal_kegiatan',
+                        isGreaterThanOrEqualTo: DateTime.now(),
+                      )
+                      .orderBy('tanggal_kegiatan')
+                      .limit(5)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return const Center(child: Text('Something went wrong'));
+                    }
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(child: Text('Tidak ada pengumuman'));
+                    }
+
+                    return ListView.builder(
+                      padding: EdgeInsets.zero,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) {
+                        var data =
+                            snapshot.data!.docs[index].data()
+                                as Map<String, dynamic>;
+                        return _pengumumanItem(data);
+                      },
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -385,55 +442,80 @@ class _HomePageUserState extends State<HomePageUser> {
     );
   }
 
-  Widget _pengumumanItem() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 55,
-            height: 55,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              image: const DecorationImage(
-                image: AssetImage("gotongroyong.png"),
-                fit: BoxFit.cover,
+  Widget _pengumumanItem(Map<String, dynamic> data) {
+    String title = data['judul'] ?? 'No Title';
+    Timestamp? timestamp = data['tanggal_kegiatan'] as Timestamp?;
+    String dateStr = timestamp != null
+        ? "${timestamp.toDate().day}/${timestamp.toDate().month}/${timestamp.toDate().year}"
+        : "-";
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DetailPengumuman(data: data)),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 55,
+              height: 55,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                image: const DecorationImage(
+                  image: AssetImage(
+                    "assets/gotongroyong.png",
+                  ), // Use asset for now as no image in Firestore
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "[Kegiatan Bulanan] - Gotong Royong Bulanan",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, size: 14, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text("08:30", style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(dateStr, style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:expo/user/daftar_kendaraan.dart';
+import 'package:expo/admin/daftar_kendaraan_admin.dart';
 import 'package:expo/user/notifikasi.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expo/auth/signin_merged.dart';
 
-class ProfilPage extends StatefulWidget {
-  const ProfilPage({super.key});
+class ProfilAdminPage extends StatefulWidget {
+  const ProfilAdminPage({super.key});
 
   @override
-  State<ProfilPage> createState() => _ProfilPageState();
+  State<ProfilAdminPage> createState() => _ProfilAdminPageState();
 }
 
-class _ProfilPageState extends State<ProfilPage> {
+class _ProfilAdminPageState extends State<ProfilAdminPage> {
   String _userName = "";
   int _unverifiedCount = 0;
   int _verifiedCount = 0;
@@ -29,40 +30,33 @@ class _ProfilPageState extends State<ProfilPage> {
     if (userId == null) return;
 
     try {
-      // 1. Fetch User Profile
+      // 1. Fetch Admin Profile
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
           .get();
-      String name = "User";
+      String name = "Admin";
       if (userDoc.exists) {
         final data = userDoc.data();
-        name = data?['nama'] ?? data?['username'] ?? "User";
+        name = data?['nama'] ?? data?['username'] ?? "Admin";
       }
 
-      // 2. Fetch Verified Count from 'plat_terdaftar'
-      final verifiedSnap = await FirebaseFirestore.instance
-          .collection('plat_terdaftar')
-          .where('ownerId', isEqualTo: userId)
-          .get();
-
-      int verified = verifiedSnap.docs.length;
-
-      // 3. Fetch All Requests from 'kendaraan_request' to count Unverified
+      // 2. Fetch All Requests to count
       final requestSnap = await FirebaseFirestore.instance
           .collection('kendaraan_request')
-          .where('ownerId', isEqualTo: userId)
           .get();
 
       int unverified = 0;
+      int verified = 0;
+
       for (var doc in requestSnap.docs) {
         final data = doc.data();
         final rawStatus = data['status']?.toString().toLowerCase() ?? 'pending';
 
-        // Normalize status: only count as unverified if it's NOT approved, verified, OR rejected
-        if (rawStatus != 'approved' &&
-            rawStatus != 'verified' &&
-            rawStatus != 'rejected') {
+        if (rawStatus == 'approved' || rawStatus == 'verified') {
+          verified++;
+        } else if (rawStatus != 'rejected') {
+          // Assuming anything not approved/verified/rejected is pending/unverified
           unverified++;
         }
       }
@@ -75,7 +69,7 @@ class _ProfilPageState extends State<ProfilPage> {
         });
       }
     } catch (e) {
-      print("Error fetching data: $e");
+      print("Error fetching admin data: $e");
     }
   }
 
@@ -90,7 +84,6 @@ class _ProfilPageState extends State<ProfilPage> {
           child: Stack(
             children: [
               // 1. Content Body (White part)
-              // We use a Column to push it down, and MinHeight to fill screen
               Column(
                 children: [
                   const SizedBox(height: 180), // Space for header
@@ -173,7 +166,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
               // 3. Avatar (Positioned absolute)
               Positioned(
-                top: 110, // 180 (white start) - 70 (half avatar)
+                top: 110,
                 left: 0,
                 right: 0,
                 child: Center(
@@ -217,7 +210,7 @@ class _ProfilPageState extends State<ProfilPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          "Penghuni",
+          "Admin",
           style: TextStyle(
             fontSize: 16,
             color: Color(0xFF7C68BE),
@@ -246,7 +239,7 @@ class _ProfilPageState extends State<ProfilPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "Kendaraanku",
+                "Kendaraan Penghuni",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -269,7 +262,9 @@ class _ProfilPageState extends State<ProfilPage> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const DaftarKendaraanPage(initialFilter: 0),
+                                  const DaftarKendaraanAdminPage(
+                                    initialStatus: 'Pending',
+                                  ),
                             ),
                           ).then((_) => _fetchUserData());
                         },
@@ -288,7 +283,9 @@ class _ProfilPageState extends State<ProfilPage> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const DaftarKendaraanPage(initialFilter: 1),
+                                  const DaftarKendaraanAdminPage(
+                                    initialStatus: 'Approved',
+                                  ),
                             ),
                           ).then((_) => _fetchUserData());
                         },
@@ -313,7 +310,7 @@ class _ProfilPageState extends State<ProfilPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFDCDCDC), // Slightly darker grey for inner cards
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300),
       ),
@@ -326,7 +323,7 @@ class _ProfilPageState extends State<ProfilPage> {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
               ),
             ],
           ),
@@ -334,10 +331,9 @@ class _ProfilPageState extends State<ProfilPage> {
           Text(
             count,
             style: const TextStyle(
-              fontSize: 28,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -347,19 +343,23 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildContactSection() {
     return _buildSectionContainer(
-      title: "Kontak",
       children: [
-        _buildListTile(
-          Icons.email,
-          "Tonald@gmail.com",
-          showBorder: false,
-          fontSize: 14,
+        _buildMenuItem(
+          icon: Icons.headset_mic,
+          title: "Hubungi Kami",
+          onTap: () {},
         ),
-        _buildListTile(
-          Icons.check_circle,
-          "Blok G No.1",
-          showBorder: false,
-          fontSize: 14,
+        _buildDivider(),
+        _buildMenuItem(
+          icon: Icons.privacy_tip,
+          title: "Kebijakan Privasi",
+          onTap: () {},
+        ),
+        _buildDivider(),
+        _buildMenuItem(
+          icon: Icons.description,
+          title: "Syarat & Ketentuan",
+          onTap: () {},
         ),
       ],
     );
@@ -367,13 +367,17 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildAccountSection() {
     return _buildSectionContainer(
-      title: "Akun",
       children: [
-        _buildListTile(
-          Icons.person,
-          "Data Pribadi",
-          hasArrow: true,
-          isSingle: true,
+        _buildMenuItem(
+          icon: Icons.person_outline,
+          title: "Ubah Profil",
+          onTap: () {},
+        ),
+        _buildDivider(),
+        _buildMenuItem(
+          icon: Icons.lock_outline,
+          title: "Ubah Password",
+          onTap: () {},
         ),
       ],
     );
@@ -381,130 +385,87 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildSettingsSection(BuildContext context) {
     return _buildSectionContainer(
-      title: "Pengaturan",
       children: [
-        _buildListTile(
-          Icons.settings,
-          "Ubah Password",
-          hasArrow: true,
-          isFirst: true,
-        ),
-        _buildListTile(Icons.help, "FAQ dan Bantuan", hasArrow: true),
-        GestureDetector(
-          onTap: () async {
+        _buildMenuItem(
+          icon: Icons.logout,
+          title: "Keluar",
+          textColor: Colors.red,
+          iconColor: Colors.red,
+          onTap: () {
+            // Clear storage
             final storage = GetStorage();
-            await storage.erase();
-            Navigator.pushNamedAndRemoveUntil(
+            storage.remove("userId");
+            storage.remove("role");
+            storage.remove("remember_password"); // Prevent auto-login
+            // Navigate to login
+            Navigator.pushAndRemoveUntil(
               context,
-              '/',
-              (Route<dynamic> route) => false,
+              MaterialPageRoute(builder: (context) => const SignInMergedPage()),
+              (route) => false,
             );
           },
-          child: _buildListTile(
-            Icons.logout,
-            "Keluar",
-            hasArrow: false,
-            isLast: true,
-            showBorder: false,
-            iconColor: Colors.red,
-            textColor: Colors.red,
-          ),
         ),
       ],
     );
   }
 
-  Widget _buildSectionContainer({
-    required String title,
-    required List<Widget> children,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double screenWidth = constraints.maxWidth;
-        double maxContentWidth = 600;
-        double defaultPadding = 20;
-        double horizontalPadding = (screenWidth - maxContentWidth) / 2;
-
-        if (horizontalPadding < defaultPadding) {
-          horizontalPadding = defaultPadding;
-        }
-
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8E8E8),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(children: children),
+  Widget _buildSectionContainer({required List<Widget> children}) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-        );
-      },
+          child: Column(children: children),
+        ),
+      ),
     );
   }
 
-  Widget _buildListTile(
-    IconData icon,
-    String title, {
-    bool hasArrow = false,
-    bool isFirst = false,
-    bool isLast = false,
-    bool isSingle = false,
-    bool showBorder = true,
-    double fontSize = 16,
-    Color? iconColor,
-    Color? textColor,
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color textColor = Colors.black87,
+    Color iconColor = const Color(0xFF7C68BE),
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        border: (showBorder && !isLast && !isSingle)
-            ? const Border(bottom: BorderSide(color: Colors.black12))
-            : null,
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: iconColor, size: 20),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: (iconColor ?? const Color(0xFF7C68BE)).withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: iconColor ?? const Color(0xFF7C68BE),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: fontSize,
-                color: textColor ?? Colors.black87,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (hasArrow)
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        ],
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
       ),
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        size: 14,
+        color: Colors.grey,
+      ),
+      onTap: onTap,
     );
+  }
+
+  Widget _buildDivider() {
+    return const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0));
   }
 }

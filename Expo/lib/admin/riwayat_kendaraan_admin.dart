@@ -16,7 +16,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
   String _searchQuery = '';
   String _statusFilter = '';
   String _jenisFilter = '';
-  DateTimeRange? _selectedDateRange;
+  DateTime? _selectedDate;
 
   String _monthName(int m) {
     const months = [
@@ -157,11 +157,12 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
       final matchesJenis = _jenisFilter.isEmpty || item['type'] == _jenisFilter;
 
       bool matchesDate = true;
-      if (_selectedDateRange != null) {
+      if (_selectedDate != null) {
         final d = item['date_raw'];
-        final start = _selectedDateRange!.start;
-        final end = _selectedDateRange!.end.add(const Duration(days: 1));
-        matchesDate = d.isAfter(start) && d.isBefore(end);
+        matchesDate =
+            d.year == _selectedDate!.year &&
+            d.month == _selectedDate!.month &&
+            d.day == _selectedDate!.day;
       }
 
       return matchesSearch && matchesStatus && matchesJenis && matchesDate;
@@ -339,36 +340,43 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         double width = constraints.maxWidth;
+        if (width > 600) width = 600;
+
         double spacing = 8;
         // Subtract padding (16 * 2 = 32) and spacing (8 * 2 = 16)
         double itemWidth = (width - 32 - (spacing * 2)) / 3;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              SizedBox(width: itemWidth, child: _buildDateFilter()),
-              SizedBox(width: spacing),
-              SizedBox(
-                width: itemWidth,
-                child: _buildFilterChip(
-                  label: "Status",
-                  value: _statusFilter,
-                  items: ['masuk', 'keluar'],
-                  onChanged: (v) => setState(() => _statusFilter = v),
-                ),
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  SizedBox(width: itemWidth, child: _buildDateFilter()),
+                  SizedBox(width: spacing),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildFilterChip(
+                      label: "Status",
+                      value: _statusFilter,
+                      items: ['masuk', 'keluar'],
+                      onChanged: (v) => setState(() => _statusFilter = v),
+                    ),
+                  ),
+                  SizedBox(width: spacing),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildFilterChip(
+                      label: "Jenis",
+                      value: _jenisFilter,
+                      items: ['Motor', 'Mobil'],
+                      onChanged: (v) => setState(() => _jenisFilter = v),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(width: spacing),
-              SizedBox(
-                width: itemWidth,
-                child: _buildFilterChip(
-                  label: "Jenis",
-                  value: _jenisFilter,
-                  items: ['Motor', 'Mobil'],
-                  onChanged: (v) => setState(() => _jenisFilter = v),
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -377,27 +385,87 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
 
   // DATE FILTER (UI tidak diubah)
   Widget _buildDateFilter() {
-    bool selected = _selectedDateRange != null;
+    bool selected = _selectedDate != null;
 
     String label = "Tanggal";
     if (selected) {
-      final s = _selectedDateRange!.start;
-      final e = _selectedDateRange!.end;
-      label =
-          "${s.day} ${_monthName(s.month)} - ${e.day} ${_monthName(e.month)}";
+      final s = _selectedDate!;
+      label = "${s.day} ${_monthName(s.month)} ${s.year}";
     }
 
     return GestureDetector(
       onTap: () async {
-        final picked = await showDateRangePicker(
+        final DateTime? picked = await showDialog<DateTime>(
           context: context,
-          firstDate: DateTime(2020),
-          lastDate: DateTime.now(),
-          initialDateRange: _selectedDateRange,
+          builder: (context) {
+            DateTime tempSelectedDate = _selectedDate ?? DateTime.now();
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: Color(0xFF7C68BE),
+                  onPrimary: Colors.white,
+                  onSurface: Colors.black,
+                ),
+                textButtonTheme: TextButtonThemeData(
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF7C68BE),
+                  ),
+                ),
+              ),
+              child: StatefulBuilder(
+                builder: (context, setStateDialog) {
+                  return AlertDialog(
+                    contentPadding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+                    content: SizedBox(
+                      width: 320,
+                      height: 400,
+                      child: CalendarDatePicker(
+                        initialDate: tempSelectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                        onDateChanged: (date) {
+                          setStateDialog(() {
+                            tempSelectedDate = date;
+                          });
+                        },
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context, DateTime(0));
+                        },
+                        child: const Text(
+                          "Hapus Filter",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Batal"),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context, tempSelectedDate);
+                        },
+                        child: const Text("Pilih"),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
         );
 
         if (picked != null) {
-          setState(() => _selectedDateRange = picked);
+          if (picked.year == 0) {
+            setState(() => _selectedDate = null);
+          } else {
+            setState(() => _selectedDate = picked);
+          }
         }
       },
       child: Container(
@@ -418,7 +486,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
               const Icon(Icons.calendar_today, size: 14, color: Colors.black54)
             else
               GestureDetector(
-                onTap: () => setState(() => _selectedDateRange = null),
+                onTap: () => setState(() => _selectedDate = null),
                 child: const Icon(Icons.close, size: 14, color: Colors.white),
               ),
             const SizedBox(width: 4),
@@ -490,6 +558,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
   Widget _buildHistoryItem(Map<String, dynamic> item) {
     final isEntry = item['isEntry'];
     final color = isEntry ? Colors.green : Colors.red;
+    final statusText = isEntry ? "Masuk" : "Keluar";
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -503,29 +572,54 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "${item['plate']} • ${item['type']}",
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              // KIRI: Jenis & Plat
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['type'],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item['plate'],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
               ),
-              Icon(isEntry ? Icons.login : Icons.logout, color: Colors.black87),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.check_circle, size: 16, color: color),
-              const SizedBox(width: 4),
-              Text(
-                item['status'],
-                style: TextStyle(color: color, fontWeight: FontWeight.w500),
+
+              // KANAN: Badge Status (Icon + Text)
+              Row(
+                children: [
+                  Icon(Icons.check_circle, size: 16, color: color),
+                  const SizedBox(width: 4),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 12),
+          const Divider(color: Colors.black12),
+          const SizedBox(height: 8),
+
+          // BAWAH: Tanggal & See Details
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

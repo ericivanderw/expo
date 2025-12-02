@@ -1,11 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/appbarback.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+
 class DetailPengumuman extends StatelessWidget {
-  const DetailPengumuman({super.key});
+  final Map<String, dynamic> data;
+
+  const DetailPengumuman({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
+    String title = data['judul'] ?? 'No Title';
+    String description = data['deskripsi'] ?? 'No Description';
+    Timestamp? eventDateTimestamp = data['tanggal_kegiatan'] as Timestamp?;
+    Timestamp? createdTimestamp = data['createdAt'] as Timestamp?;
+
+    String eventDateStr = eventDateTimestamp != null
+        ? DateFormat('d MMMM yyyy').format(eventDateTimestamp.toDate())
+        : '-';
+    String uploadedStr = createdTimestamp != null
+        ? "Uploaded ${DateFormat('d MMM yyyy, HH:mm').format(createdTimestamp.toDate())}"
+        : "Uploaded -";
+
     return Scaffold(
       backgroundColor: const Color(0xFFE0E0E0),
       appBar: const AppBarBack(
@@ -38,18 +55,18 @@ class DetailPengumuman extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "[Kegiatan Bulanan] - Gotong Royong Warga",
-                    style: TextStyle(
+                  Text(
+                    title,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    "Uploaded 1 Jan 2024, 08:30",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  Text(
+                    uploadedStr,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 20),
                   Center(
@@ -58,7 +75,7 @@ class DetailPengumuman extends StatelessWidget {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         image: const DecorationImage(
-                          image: NetworkImage("https://picsum.photos/400/500"),
+                          image: AssetImage("assets/gotongroyong.png"),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -75,10 +92,10 @@ class DetailPengumuman extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade200),
                     ),
-                    child: const Column(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           "Deskripsi",
                           style: TextStyle(
                             fontSize: 14,
@@ -86,10 +103,13 @@ class DetailPengumuman extends StatelessWidget {
                             color: Colors.black87,
                           ),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
-                          "Kegiatan bulanan gotong royong untuk bulan Januari. Akan dilaksanakan pada tanggal 10 Januari di hari Minggu, titik kumpul di balai warga. Harap bapak/ibu bisa meluangkan waktu untuk mengikuti kegiatan rutin ini demi kebersihan lingkungan bersama.\\n\\n(Ini adalah contoh teks panjang untuk menguji fitur scroll pada halaman. Jika deskripsi sangat panjang, halaman ini akan otomatis bisa digulir ke bawah).",
-                          style: TextStyle(fontSize: 15, color: Colors.black54),
+                          description,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black54,
+                          ),
                           textAlign: TextAlign.justify,
                         ),
                       ],
@@ -104,10 +124,10 @@ class DetailPengumuman extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade200),
                     ),
-                    child: const Column(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           "Tanggal Kegiatan",
                           style: TextStyle(
                             fontSize: 14,
@@ -115,10 +135,13 @@ class DetailPengumuman extends StatelessWidget {
                             color: Colors.black87,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          "10 January 2024",
-                          style: TextStyle(fontSize: 14, color: Colors.black54),
+                          eventDateStr,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
                         ),
                       ],
                     ),

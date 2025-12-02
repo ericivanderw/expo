@@ -15,7 +15,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   String _searchQuery = '';
   String _statusFilter = '';
   String _jenisFilter = '';
-  DateTimeRange? _selectedDateRange;
+  DateTime? _selectedDate;
 
   List<Map<String, dynamic>> _historyData = [];
   List<String> userPlates = [];
@@ -138,7 +138,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
         temp.add({
           "plat": plate,
           "type": vehicleTypes[plate] ?? data['jenis'] ?? '-',
-          "status": "keluar",
+          "status": "Keluar",
           "date": _formatDate(rawDate),
           "date_raw": _parseDate(rawDate),
         });
@@ -200,15 +200,12 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
       final matchesJenis = _jenisFilter.isEmpty || item['type'] == _jenisFilter;
 
       bool matchesDate = true;
-      if (_selectedDateRange != null) {
+      if (_selectedDate != null) {
         final DateTime itemDate = item['date_raw'];
-        final start = _selectedDateRange!.start;
-        final end = _selectedDateRange!.end
-            .add(const Duration(days: 1))
-            .subtract(const Duration(seconds: 1));
         matchesDate =
-            itemDate.isAfter(start.subtract(const Duration(seconds: 1))) &&
-            itemDate.isBefore(end.add(const Duration(seconds: 1)));
+            itemDate.year == _selectedDate!.year &&
+            itemDate.month == _selectedDate!.month &&
+            itemDate.day == _selectedDate!.day;
       }
 
       return matchesSearch && matchesStatus && matchesJenis && matchesDate;
@@ -383,57 +380,71 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   }
 
   Widget _buildFilters() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Flexible(child: _buildDateFilter()),
-          const SizedBox(width: 8),
-          Flexible(
-            child: _buildFilterChip(
-              label: "Status",
-              value: _statusFilter,
-              items: ['Masuk', 'keluar'],
-              onChanged: (value) {
-                setState(() => _statusFilter = value);
-              },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double width = constraints.maxWidth;
+        if (width > 600) width = 600;
+
+        double spacing = 8;
+        // Subtract padding (16 * 2 = 32) and spacing (8 * 2 = 16)
+        double itemWidth = (width - 32 - (spacing * 2)) / 3;
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  SizedBox(width: itemWidth, child: _buildDateFilter()),
+                  SizedBox(width: spacing),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildFilterChip(
+                      label: "Status",
+                      value: _statusFilter,
+                      items: ['Masuk', 'Keluar'],
+                      onChanged: (value) {
+                        setState(() => _statusFilter = value);
+                      },
+                    ),
+                  ),
+                  SizedBox(width: spacing),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildFilterChip(
+                      label: "Jenis",
+                      value: _jenisFilter,
+                      items: ['Motor', 'Mobil'],
+                      onChanged: (value) {
+                        setState(() => _jenisFilter = value);
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: _buildFilterChip(
-              label: "Jenis",
-              value: _jenisFilter,
-              items: ['Motor', 'Mobil'],
-              onChanged: (value) {
-                setState(() => _jenisFilter = value);
-              },
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildDateFilter() {
     String label = "Tanggal";
-    bool isSelected = _selectedDateRange != null;
+    bool isSelected = _selectedDate != null;
     if (isSelected) {
-      final start = _selectedDateRange!.start;
-      final end = _selectedDateRange!.end;
-      label =
-          "${start.day} ${_monthName(start.month)} - ${end.day} ${_monthName(end.month)}";
+      final date = _selectedDate!;
+      label = "${date.day} ${_monthName(date.month)} ${date.year}";
     }
 
     return GestureDetector(
       onTap: () async {
-        final DateTimeRange? picked = await showDateRangePicker(
+        // Custom Dialog with CalendarDatePicker to support "Clear" button
+        final DateTime? picked = await showDialog<DateTime>(
           context: context,
-          firstDate: DateTime(2020),
-          lastDate: DateTime.now(),
-          initialDateRange: _selectedDateRange,
-          initialEntryMode: DatePickerEntryMode.calendarOnly,
-          builder: (context, child) {
+          builder: (context) {
+            DateTime tempSelectedDate = _selectedDate ?? DateTime.now();
             return Theme(
               data: Theme.of(context).copyWith(
                 colorScheme: const ColorScheme.light(
@@ -447,23 +458,72 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                   ),
                 ),
               ),
-              child: child!,
+              child: StatefulBuilder(
+                builder: (context, setStateDialog) {
+                  return AlertDialog(
+                    contentPadding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+                    content: SizedBox(
+                      width: 320,
+                      height: 400,
+                      child: CalendarDatePicker(
+                        initialDate: tempSelectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                        onDateChanged: (date) {
+                          setStateDialog(() {
+                            tempSelectedDate = date;
+                          });
+                        },
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(
+                            context,
+                            DateTime(0),
+                          ); // Sentinel for Clear
+                        },
+                        child: const Text(
+                          "Hapus Filter",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Cancel (null)
+                        },
+                        child: const Text("Batal"),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context, tempSelectedDate);
+                        },
+                        child: const Text("Pilih"),
+                      ),
+                    ],
+                  );
+                },
+              ),
             );
           },
-          saveText: "Simpan",
-          cancelText: "Batal",
-          helpText: "Pilih Rentang Tanggal",
-          fieldStartLabelText: "Tanggal Mulai",
-          fieldEndLabelText: "Tanggal Selesai",
         );
-        if (picked != null && picked != _selectedDateRange) {
-          setState(() {
-            _selectedDateRange = picked;
-          });
+
+        if (picked != null) {
+          if (picked.year == 0) {
+            setState(() {
+              _selectedDate = null;
+            });
+          } else {
+            setState(() {
+              _selectedDate = picked;
+            });
+          }
         }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF7C68BE) : Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -473,12 +533,13 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isSelected)
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    _selectedDateRange = null;
+                    _selectedDate = null;
                   });
                 },
                 child: const Padding(
@@ -516,6 +577,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
       onSelected: onChanged,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: value.isNotEmpty ? const Color(0xFF7C68BE) : Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -527,6 +589,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (value.isNotEmpty)
               const Icon(Icons.filter_alt, size: 14, color: Colors.white),
@@ -579,33 +642,54 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "${item['plat']} • ${item['type']}",
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+              // KIRI: Jenis & Plat
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['type'],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item['plat'],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
               ),
-              Icon(isEntry ? Icons.login : Icons.logout, color: Colors.black87),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.check_circle, size: 16, color: statusColor),
-              const SizedBox(width: 4),
-              Text(
-                statusText,
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.w500,
-                ),
+
+              // KANAN: Badge Status (Icon + Text)
+              Row(
+                children: [
+                  Icon(Icons.check_circle, size: 16, color: statusColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 12),
+          const Divider(color: Colors.black12),
+          const SizedBox(height: 8),
+
+          // BAWAH: Tanggal & See Details
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

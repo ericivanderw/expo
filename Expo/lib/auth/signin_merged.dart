@@ -22,6 +22,33 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
 
   bool _loading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkLogin();
+  }
+
+  void _checkLogin() {
+    final storage = GetStorage();
+    final savedUsername = storage.read("remember_username");
+    final savedPassword = storage.read("remember_password");
+
+    if (savedUsername != null) {
+      _emailController.text = savedUsername;
+      setState(() {
+        _rememberMe = true;
+      });
+    }
+
+    if (savedUsername != null && savedPassword != null) {
+      _passwordController.text = savedPassword;
+      // Auto login
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleLogin();
+      });
+    }
+  }
+
   // 🔥 Login tanpa Firebase Auth (Firestore manual)
   Future<void> _handleLogin() async {
     setState(() => _loading = true);
@@ -69,6 +96,15 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
         Navigator.pushReplacementNamed(context, '/admin/homepage');
       } else {
         Navigator.pushReplacementNamed(context, '/user/homepage');
+      }
+
+      // Handle Remember Me
+      if (_rememberMe) {
+        await storage.write("remember_username", username);
+        await storage.write("remember_password", password);
+      } else {
+        await storage.remove("remember_username");
+        await storage.remove("remember_password");
       }
 
       ScaffoldMessenger.of(
@@ -217,7 +253,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
           AnimatedPositioned(
             duration: const Duration(milliseconds: 800),
             curve: Curves.easeInOut,
-            bottom: _isSignInFormVisible ? 0 : -height * 0.6,
+            bottom: _isSignInFormVisible ? 0 : -height * 0.7,
             left: 0,
             right: 0,
             child: Center(
@@ -225,7 +261,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                 constraints: BoxConstraints(maxWidth: cardMaxWidth),
                 child: Container(
                   width: width,
-                  height: height * 0.52,
+                  height: height * 0.560,
                   padding: const EdgeInsets.symmetric(horizontal: 28),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEAEAEA),
@@ -287,7 +323,7 @@ class _SignInMergedPageState extends State<SignInMergedPage> {
                         // 🔥 EMAIL INPUT
                         _inputField(
                           icon: Icons.email_outlined,
-                          hint: "Enter your email",
+                          hint: "Enter your username",
                           controller: _emailController,
                           iconColor: iconColor,
                         ),

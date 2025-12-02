@@ -45,7 +45,7 @@ class _DetailKendaraanApprovalAdminPageState
           'jenis': v['type'] ?? '',
           'ownerId': v['ownerId'] ?? '-',
           'fotoUrl': v['fotoUrl'] ?? '',
-          'keterangan': v['keterangan'] ?? '',
+          'kategori': v['kategori'] ?? '',
           'createdAt': FieldValue.serverTimestamp(),
           'approvedAt': FieldValue.serverTimestamp(),
         });
@@ -167,44 +167,11 @@ class _DetailKendaraanApprovalAdminPageState
                       ),
                       const SizedBox(height: 12),
                       _buildDetailBox(
-                        'Merk Kendaraan',
-                        widget.vehicle['merk'] ?? '-',
-                      ),
-                      const SizedBox(height: 12),
-                      _buildDetailBox(
                         'Keterangan',
-                        widget.vehicle['keterangan'] ?? '-',
+                        widget.vehicle['kategori'] ?? '-',
                       ),
 
                       const SizedBox(height: 24),
-
-                      const Text(
-                        'Foto Kendaraan',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child:
-                            widget.vehicle['fotoUrl'] != null &&
-                                widget.vehicle['fotoUrl'] != ""
-                            ? Image.network(
-                                widget.vehicle['fotoUrl'],
-                                width: double.infinity,
-                                height: 200,
-                                fit: BoxFit.cover,
-                              )
-                            : Image.asset(
-                                'assets/car.png',
-                                width: double.infinity,
-                                height: 200,
-                                fit: BoxFit.cover,
-                              ),
-                      ),
                     ],
                   ),
                 ),
@@ -224,9 +191,9 @@ class _DetailKendaraanApprovalAdminPageState
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => updateStatus("approved"),
+                        onPressed: () => updateStatus("Approved"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF65A278),
+                          backgroundColor: const Color(0xFF4CAF50),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
@@ -237,6 +204,7 @@ class _DetailKendaraanApprovalAdminPageState
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -244,9 +212,9 @@ class _DetailKendaraanApprovalAdminPageState
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => updateStatus("rejected"),
+                        onPressed: () => updateStatus("Rejected"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFA85656),
+                          backgroundColor: const Color(0xFFF44336),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
@@ -257,6 +225,7 @@ class _DetailKendaraanApprovalAdminPageState
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ),

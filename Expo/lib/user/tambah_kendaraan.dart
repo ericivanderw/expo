@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:expo/widgets/button.dart';
 
 class TambahKendaraanPage extends StatefulWidget {
   const TambahKendaraanPage({super.key});
@@ -23,8 +24,6 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
   String? _selectedJenis;
   String? _selectedStatus;
   DateTime? _selectedDate;
-
-  File? _selectedImage;
   bool _loading = false;
 
   final picker = ImagePicker();
@@ -56,32 +55,6 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
       }
     } catch (e) {
       print("Error fetching user data: $e");
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() {
-        _selectedImage = File(picked.path);
-      });
-    }
-  }
-
-  Future<String?> _uploadImage(File imageFile, String uid) async {
-    try {
-      final fileName =
-          "stnk_${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg";
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child("kendaraan_stnk")
-          .child(fileName);
-
-      await ref.putFile(imageFile);
-      return await ref.getDownloadURL();
-    } catch (e) {
-      print("Upload error: $e");
-      return null;
     }
   }
 
@@ -123,7 +96,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
       return;
     }
 
-    setState(() => _loading = true);
+    // setState(() => _loading = true); // Handled by CustomButton
 
     try {
       final storage = GetStorage();
@@ -136,19 +109,13 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
         return;
       }
 
-      String? imageUrl;
-      if (_selectedImage != null) {
-        imageUrl = await _uploadImage(_selectedImage!, ownerId);
-      }
-
       await FirebaseFirestore.instance.collection("kendaraan_request").add({
         "plat": _platController.text.trim(),
         "jenis": _selectedJenis, // Dropdown value
-        "merk": _merkController.text.trim(), // Nama Pemilik
+        "kategori": _selectedStatus, // Nama Pemilik
         "alamat": _alamatController.text.trim(),
         "ownerId": ownerId,
-        "stnkUrl": imageUrl ?? "",
-        "status": "pending",
+        "status": "Pending",
         "kedatangan": _selectedDate,
         "createdAt": FieldValue.serverTimestamp(),
       });
@@ -163,7 +130,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
         context,
       ).showSnackBar(SnackBar(content: Text("Terjadi kesalahan: $e")));
     } finally {
-      setState(() => _loading = false);
+      // setState(() => _loading = false); // Handled by CustomButton
     }
   }
 
@@ -184,161 +151,126 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildLabel("Nama Pemilik"),
-              _buildTextField(
-                controller: _merkController,
-                hint: "Andi",
-                readOnly: true,
-              ),
-              const SizedBox(height: 16),
-
-              _buildLabel("Alamat"),
-              _buildTextField(
-                controller: _alamatController,
-                hint: "Blok G No.1",
-                readOnly: true,
-              ),
-              const SizedBox(height: 16),
-
-              _buildLabel("Jenis Kendaraan"),
-              _buildDropdown(
-                value: _selectedJenis,
-                hint: "Select Jenis",
-                items: ["Motor", "Mobil"],
-                onChanged: (val) => setState(() => _selectedJenis = val),
-              ),
-              const SizedBox(height: 16),
-
-              _buildLabel("Status"),
-              _buildDropdown(
-                value: _selectedStatus,
-                hint: "Select Status (Penghuni/Tamu)",
-                items: ["Penghuni", "Tamu"],
-                onChanged: (val) => setState(() {
-                  _selectedStatus = val;
-                  if (val == 'Penghuni') _selectedDate = null;
-                }),
-              ),
-              const SizedBox(height: 16),
-
-              if (_selectedStatus == 'Tamu') ...[
-                _buildLabel(
-                  "Kedatangan (Maksimal sehari 1*24 jam, Request H-1)",
-                ),
-                GestureDetector(
-                  onTap: () => _selectDate(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel("Nama Pemilik"),
+                    _buildTextField(
+                      controller: _merkController,
+                      hint: "Andi",
+                      readOnly: true,
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F0F0),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
+                    const SizedBox(height: 16),
+
+                    _buildLabel("Alamat"),
+                    _buildTextField(
+                      controller: _alamatController,
+                      hint: "Blok G No.1",
+                      readOnly: true,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _selectedDate == null
-                              ? "Select Date"
-                              : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
-                          style: TextStyle(
-                            color: _selectedDate == null
-                                ? Colors.grey.shade600
-                                : Colors.black87,
-                            fontSize: 16,
+                    const SizedBox(height: 16),
+
+                    _buildLabel("Jenis Kendaraan"),
+                    _buildDropdown(
+                      value: _selectedJenis,
+                      hint: "Pilih Jenis Kendaraan",
+                      items: ["Motor", "Mobil"],
+                      onChanged: (val) => setState(() => _selectedJenis = val),
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildLabel("Status"),
+                    _buildDropdown(
+                      value: _selectedStatus,
+                      hint: "Pilih kategori (Penghuni/Tamu)",
+                      items: ["Penghuni", "Tamu"],
+                      onChanged: (val) => setState(() {
+                        _selectedStatus = val;
+                        if (val == 'Penghuni') _selectedDate = null;
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (_selectedStatus == 'Tamu') ...[
+                      _buildLabel(
+                        "Kedatangan (Maksimal sehari 1*24 jam, Request H-1)",
+                      ),
+                      GestureDetector(
+                        onTap: () => _selectDate(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0F0F0),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _selectedDate == null
+                                    ? "Select Date"
+                                    : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
+                                style: TextStyle(
+                                  color: _selectedDate == null
+                                      ? Colors.grey.shade600
+                                      : Colors.black87,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                color: Colors.grey.shade600,
+                              ),
+                            ],
                           ),
                         ),
-                        Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Colors.grey.shade600,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
-              _buildLabel("Plat Kendaraan"),
-              _buildTextField(controller: _platController, hint: "BP3333ED"),
-              const SizedBox(height: 16),
-
-              _buildLabel("Foto Kendaraan"),
-              const Text(
-                "Upload dengan format .pdf .jpeg .png max 2MB.",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F3FF), // Light purple tint
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF7C68BE).withOpacity(0.5),
-                      style: BorderStyle.solid,
+                    _buildLabel("Plat Kendaraan"),
+                    _buildTextField(
+                      controller: _platController,
+                      hint: "BP3333ED",
                     ),
-                  ),
-                  child: _selectedImage == null
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(
-                              Icons.cloud_upload_outlined,
-                              size: 40,
-                              color: Color(0xFF7C68BE),
-                            ),
-                          ],
-                        )
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                        ),
+
+                    const SizedBox(height: 20),
+                  ],
                 ),
               ),
-              const SizedBox(height: 30),
-
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6A53A1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _loading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "Submit",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
-        ),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: SizedBox(
+                width: double.infinity,
+                child: CustomButton(text: "Submit", onPressed: _submit),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

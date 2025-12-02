@@ -11,7 +11,7 @@ import 'admin/admin_homepage.dart';
 import 'admin/admin_pengumuman.dart';
 import 'admin/tambah_pengumuman.dart';
 import 'admin/daftar_pengumuman.dart';
-import 'admin/detail_pengumuman.dart';
+
 import 'admin/riwayat_kendaraan_admin.dart';
 import 'admin/daftar_kendaraan_admin.dart';
 import 'admin/daftar_penghuni_admin.dart';
@@ -60,7 +60,7 @@ class MyApp extends StatelessWidget {
         '/admin/pengumuman': (context) => const AdminHomePage(initialIndex: 1),
         '/admin/tambah_pengumuman': (context) => const TambahPengumumanPage(),
         '/admin/daftar_pengumuman': (context) => const DaftarPengumumanPage(),
-        '/admin/detail_pengumuman': (context) => const DetailPengumumanPage(),
+
         '/admin/riwayat_kendaraan': (context) =>
             const RiwayatKendaraanAdminPage(),
         '/admin/daftar_kendaraan': (context) =>

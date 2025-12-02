@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'detail_pengumuman.dart';
 
@@ -6,15 +7,6 @@ class Pengumuman extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> announcements = List.generate(
-      5,
-      (index) => {
-        "title": "[Kegiatan Bulanan] - Gotong Royong Bulanan",
-        "date": "10 Jan 2024",
-        "image": "https://picsum.photos/200",
-      },
-    );
-
     return Scaffold(
       backgroundColor: const Color(0xFFE0E0E0),
       body: Stack(
@@ -88,26 +80,71 @@ class Pengumuman extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              ...List.generate(announcements.length, (index) {
-                                final item = announcements[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _AnnouncementItem(
-                                    title: item['title']!,
-                                    date: item['date']!,
-                                    imageUrl: item['image']!,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const DetailPengumuman(),
+                              StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('pengumuman')
+                                    .orderBy('createdAt', descending: true)
+                                    .snapshots(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return const Center(
+                                      child: Text('Something went wrong'),
+                                    );
+                                  }
+
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+
+                                  if (!snapshot.hasData ||
+                                      snapshot.data!.docs.isEmpty) {
+                                    return const Center(
+                                      child: Text('Tidak ada pengumuman'),
+                                    );
+                                  }
+
+                                  return Column(
+                                    children: snapshot.data!.docs.map((doc) {
+                                      var data =
+                                          doc.data() as Map<String, dynamic>;
+                                      String title =
+                                          data['judul'] ?? 'No Title';
+                                      Timestamp? timestamp =
+                                          data['tanggal_kegiatan']
+                                              as Timestamp?;
+                                      String dateStr = timestamp != null
+                                          ? "${timestamp.toDate().day}/${timestamp.toDate().month}/${timestamp.toDate().year}"
+                                          : "-";
+
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: _AnnouncementItem(
+                                          title: title,
+                                          date: dateStr,
+                                          imageUrl:
+                                              "assets/gotongroyong.png", // Use asset for now
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    DetailPengumuman(
+                                                      data: data,
+                                                    ),
+                                              ),
+                                            );
+                                          },
                                         ),
                                       );
-                                    },
-                                  ),
-                                );
-                              }),
+                                    }).toList(),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                         ),
@@ -164,7 +201,7 @@ class _AnnouncementItem extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 image: DecorationImage(
-                  image: NetworkImage(imageUrl),
+                  image: AssetImage(imageUrl), // Changed to AssetImage
                   fit: BoxFit.cover,
                 ),
               ),

@@ -1,6 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/admin/daftar_pengumuman.dart';
 import 'package:expo/admin/tambah_pengumuman.dart';
+import 'package:expo/widgets/button.dart';
+import 'package:expo/admin/detail_pengumuman.dart';
+import 'package:intl/intl.dart';
 
 class AdminPengumumanPage extends StatefulWidget {
   const AdminPengumumanPage({super.key});
@@ -10,45 +14,41 @@ class AdminPengumumanPage extends StatefulWidget {
 }
 
 class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
+  DateTime _focusedDay = DateTime.now();
+  DateTime _selectedDay = DateTime.now();
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF5F5F5),
-      child: SafeArea(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
         child: Stack(
           children: [
-            Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF5F5F5),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
-                      ),
-                    ),
-                    child: Center(
+            _buildHeader(),
+            Align(
+              alignment: Alignment.topCenter,
+              child: Column(
+                children: [
+                  const SizedBox(height: 100),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 600),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 30, 20, 90),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildCalendarSection(),
-                              const SizedBox(height: 20),
-                              _buildAnnouncementsSection(),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildCalendarSection(),
+                            const SizedBox(height: 20),
+                            _buildAnnouncementsSection(),
+                            const SizedBox(height: 20),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             Positioned(
               bottom: 20,
@@ -57,7 +57,8 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
-                  child: ElevatedButton(
+                  child: CustomButton(
+                    text: 'Tambah Pengumuman',
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -66,23 +67,6 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
                         ),
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C68BE),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      elevation: 2,
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: const Text(
-                      'Tambah Pengumuman',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
                   ),
                 ),
               ),
@@ -106,41 +90,50 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
         }
 
         return Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: 20,
-          ),
+          width: double.infinity,
+          height: 200,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF8C6CCF), Color(0xFF8E9BCB)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pengumuman',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: 20,
+              left: horizontalPadding,
+              right: horizontalPadding,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pengumuman',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Daftar Pengumuman',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
-              Image.asset('assets/logo.png', width: 60, height: 60),
-            ],
+                    SizedBox(height: 4),
+                    Text(
+                      'Daftar Pengumuman',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ],
+                ),
+                Image.asset('assets/logo.png', width: 60, height: 60),
+              ],
+            ),
           ),
         );
       },
@@ -148,40 +141,36 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
   }
 
   Widget _buildCalendarSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Kalender',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Kalender',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
-          child: Column(
-            children: [
-              _buildCalendarHeader(),
-              const SizedBox(height: 16),
-              _buildCalendarGrid(),
-            ],
-          ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          _buildCalendarHeader(),
+          const SizedBox(height: 16),
+          _buildCalendarGrid(),
+        ],
+      ),
     );
   }
 
@@ -189,9 +178,9 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'February',
-          style: TextStyle(
+        Text(
+          DateFormat('MMMM yyyy').format(_focusedDay),
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
@@ -199,15 +188,27 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
         ),
         Row(
           children: [
-            const Text(
-              '2025',
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+            IconButton(
+              icon: const Icon(Icons.chevron_left),
+              onPressed: () {
+                setState(() {
+                  _focusedDay = DateTime(
+                    _focusedDay.year,
+                    _focusedDay.month - 1,
+                  );
+                });
+              },
             ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.keyboard_arrow_down,
-              size: 20,
-              color: Colors.grey.shade600,
+            IconButton(
+              icon: const Icon(Icons.chevron_right),
+              onPressed: () {
+                setState(() {
+                  _focusedDay = DateTime(
+                    _focusedDay.year,
+                    _focusedDay.month + 1,
+                  );
+                });
+              },
             ),
           ],
         ),
@@ -217,13 +218,18 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
 
   Widget _buildCalendarGrid() {
     const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    const daysInMonth = [
-      [26, 27, 28, 29, 30, 31, 1],
-      [2, 3, 4, 5, 6, 7, 8],
-      [9, 10, 11, 12, 13, 14, 15],
-      [16, 17, 18, 19, 20, 21, 22],
-      [23, 24, 25, 26, 27, 28, 0],
-    ];
+    final days = _getDaysInMonth(_focusedDay);
+
+    // Calculate start and end of the month for the query
+    final startOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final endOfMonth = DateTime(
+      _focusedDay.year,
+      _focusedDay.month + 1,
+      0,
+      23,
+      59,
+      59,
+    );
 
     return Column(
       children: [
@@ -248,60 +254,166 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
               .toList(),
         ),
         const SizedBox(height: 8),
-        ...daysInMonth.map(
-          (week) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: week.map((day) => _buildDayCell(day)).toList(),
-            ),
-          ),
+        StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('pengumuman')
+              .where('tanggal_kegiatan', isGreaterThanOrEqualTo: startOfMonth)
+              .where('tanggal_kegiatan', isLessThanOrEqualTo: endOfMonth)
+              .snapshots(),
+          builder: (context, snapshot) {
+            Set<int> activityDays = {};
+            if (snapshot.hasData) {
+              for (var doc in snapshot.data!.docs) {
+                var data = doc.data() as Map<String, dynamic>;
+                if (data['tanggal_kegiatan'] != null) {
+                  Timestamp timestamp = data['tanggal_kegiatan'] as Timestamp;
+                  activityDays.add(timestamp.toDate().day);
+                }
+              }
+            }
+
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: days.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+              ),
+              itemBuilder: (context, index) {
+                return _buildDayCell(days[index], activityDays);
+              },
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildDayCell(int day) {
-    if (day == 0) {
-      return const SizedBox(width: 36, height: 36);
+  List<DateTime> _getDaysInMonth(DateTime month) {
+    final firstDayOfMonth = DateTime(month.year, month.month, 1);
+    final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
+
+    final days = <DateTime>[];
+
+    int firstWeekday = firstDayOfMonth.weekday;
+    int padding = firstWeekday == 7 ? 0 : firstWeekday;
+
+    for (int i = 0; i < padding; i++) {
+      days.add(firstDayOfMonth.subtract(Duration(days: padding - i)));
     }
 
-    final bool isCurrentMonth = day >= 2 && day <= 28;
-    final bool isToday = day == 13 && isCurrentMonth;
+    for (int i = 0; i < lastDayOfMonth.day; i++) {
+      days.add(firstDayOfMonth.add(Duration(days: i)));
+    }
 
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: isToday ? const Color(0xFF7C68BE) : Colors.transparent,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          day.toString(),
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-            color: isToday
-                ? Colors.white
-                : !isCurrentMonth
-                ? Colors.grey.shade400
-                : Colors.black87,
-          ),
+    int remaining = 42 - days.length;
+    if (remaining < 7) {
+      int fill = 7 - (days.length % 7);
+      if (fill < 7) {
+        for (int i = 1; i <= fill; i++) {
+          days.add(lastDayOfMonth.add(Duration(days: i)));
+        }
+      }
+    }
+
+    return days;
+  }
+
+  Widget _buildDayCell(DateTime day, Set<int> activityDays) {
+    final bool isCurrentMonth = day.month == _focusedDay.month;
+    final bool isSelected =
+        day.year == _selectedDay.year &&
+        day.month == _selectedDay.month &&
+        day.day == _selectedDay.day;
+    final bool isToday =
+        day.year == DateTime.now().year &&
+        day.month == DateTime.now().month &&
+        day.day == DateTime.now().day;
+    final bool hasActivity = isCurrentMonth && activityDays.contains(day.day);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDay = day;
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF7C68BE)
+              : isToday
+              ? const Color(0xFF7C68BE).withOpacity(0.2)
+              : Colors.transparent,
+          shape: BoxShape.circle,
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Center(
+              child: Text(
+                day.day.toString(),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected || isToday
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                  color: isSelected
+                      ? Colors.white
+                      : !isCurrentMonth
+                      ? Colors.grey.shade400
+                      : Colors.black87,
+                ),
+              ),
+            ),
+            if (hasActivity)
+              Positioned(
+                bottom: 6,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white : Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildAnnouncementsSection() {
+    Query query = FirebaseFirestore.instance.collection('pengumuman');
+
+    DateTime start = DateTime(
+      _selectedDay.year,
+      _selectedDay.month,
+      _selectedDay.day,
+    );
+    DateTime end = DateTime(
+      _selectedDay.year,
+      _selectedDay.month,
+      _selectedDay.day,
+      23,
+      59,
+      59,
+    );
+    query = query
+        .where('tanggal_kegiatan', isGreaterThanOrEqualTo: start)
+        .where('tanggal_kegiatan', isLessThanOrEqualTo: end)
+        .orderBy('tanggal_kegiatan');
+
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Pengumuman',
-              style: TextStyle(
+            Text(
+              'Kegiatan pada ${DateFormat('d MMM yyyy').format(_selectedDay)}',
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
@@ -328,86 +440,120 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
           ],
         ),
         const SizedBox(height: 12),
-        _buildAnnouncementCard(
-          'Kegiatan Bulanan - Gotong Royong Warga',
-          '08:00',
-        ),
-        const SizedBox(height: 12),
-        _buildAnnouncementCard(
-          'Kegiatan Bulanan - Gotong Royong Warga',
-          '08:00',
-        ),
-        const SizedBox(height: 12),
-        _buildAnnouncementCard(
-          'Kegiatan Bulanan - Gotong Royong Warga',
-          '08:00',
+        StreamBuilder<QuerySnapshot>(
+          stream: query.snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text('Tidak ada pengumuman'),
+                ),
+              );
+            }
+
+            return Column(
+              children: snapshot.data!.docs.map((doc) {
+                var data = doc.data() as Map<String, dynamic>;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildAnnouncementCard(data),
+                );
+              }).toList(),
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildAnnouncementCard(String title, String time) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+  Widget _buildAnnouncementCard(Map<String, dynamic> data) {
+    String title = data['judul'] ?? 'No Title';
+    Timestamp? timestamp = data['tanggal_kegiatan'] as Timestamp?;
+    String time = timestamp != null
+        ? "${timestamp.toDate().hour.toString().padLeft(2, '0')}:${timestamp.toDate().minute.toString().padLeft(2, '0')}"
+        : "-";
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailPengumumanPage(data: data),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/gotongroyong.png',
-              width: 50,
-              height: 50,
-              fit: BoxFit.cover,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.access_time,
-                      size: 14,
-                      color: Colors.black54,
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/gotongroyong.png',
+                width: 50,
+                height: 50,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      time,
-                      style: const TextStyle(
-                        fontSize: 12,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 14,
                         color: Colors.black54,
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 4),
+                      Text(
+                        time,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

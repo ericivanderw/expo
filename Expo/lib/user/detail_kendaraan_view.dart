@@ -27,10 +27,30 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
         .get();
 
     if (!vehicleDoc.exists) {
-      throw Exception('Vehicle not found');
+      // Try fetching from 'plat_terdaftar' if not found in requests
+      final verifiedDoc = await FirebaseFirestore.instance
+          .collection('plat_terdaftar')
+          .doc(widget.vehicleId)
+          .get();
+
+      if (!verifiedDoc.exists) {
+        throw Exception('Vehicle not found');
+      }
+
+      // Use verified doc data
+      final vehicleData = verifiedDoc.data() as Map<String, dynamic>;
+      // Ensure status is set to Verified for display
+      vehicleData['status'] = 'Verified';
+
+      return _fetchUserData(vehicleData);
     }
 
-    final vehicleData = vehicleDoc.data() as Map<String, dynamic>;
+    return _fetchUserData(vehicleDoc.data() as Map<String, dynamic>);
+  }
+
+  Future<Map<String, dynamic>> _fetchUserData(
+    Map<String, dynamic> vehicleData,
+  ) async {
     final ownerId = vehicleData['ownerId'];
 
     Map<String, dynamic>? userData;
@@ -126,16 +146,16 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
                     ],
                     _buildDetailCard('Plat Kendaraan', platKendaraan),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Foto Kendaraan',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
+                    if (fotoUrl != null && fotoUrl.isNotEmpty) ...[
+                      const Text(
+                        'Foto Kendaraan',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (fotoUrl != null && fotoUrl.isNotEmpty)
+                      const SizedBox(height: 12),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
@@ -144,36 +164,17 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
                           height: 250,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return _buildPlaceholderImage();
+                            return const SizedBox.shrink();
                           },
                         ),
-                      )
-                    else
-                      _buildPlaceholderImage(),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderImage() {
-    return Container(
-      width: double.infinity,
-      height: 250,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.directions_car,
-          size: 80,
-          color: Colors.grey.shade400,
-        ),
       ),
     );
   }

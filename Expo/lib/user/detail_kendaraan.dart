@@ -19,7 +19,8 @@ class DetailKendaraanPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: const AppBarBack(title: "Details"),
-      body: Center(
+      body: Align(
+        alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
           child: SingleChildScrollView(
@@ -31,12 +32,15 @@ class DetailKendaraanPage extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      "Status",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                    const Padding(
+                      padding: EdgeInsets.only(left: 5.0),
+                      child: Text(
+                        "Status",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                     Container(
@@ -167,17 +171,32 @@ class DetailKendaraanPage extends StatelessWidget {
   Future<Map<String, dynamic>> _fetchVehicleDetails(String plat) async {
     if (plat.isEmpty) return {};
     try {
+      Map<String, dynamic>? vehicleData;
+
       // 1. Cari kendaraan di kendaraan_request berdasarkan plat
-      final vehicleQuery = await FirebaseFirestore.instance
+      var vehicleQuery = await FirebaseFirestore.instance
           .collection('kendaraan_request')
           .where('plat', isEqualTo: plat)
           .limit(1)
           .get();
 
-      if (vehicleQuery.docs.isEmpty) return {};
+      if (vehicleQuery.docs.isNotEmpty) {
+        vehicleData = vehicleQuery.docs.first.data();
+      } else {
+        // 2. Jika tidak ada, cari di plat_terdaftar
+        var platQuery = await FirebaseFirestore.instance
+            .collection('plat_terdaftar')
+            .where('plat', isEqualTo: plat)
+            .limit(1)
+            .get();
 
-      final vehicleDoc = vehicleQuery.docs.first;
-      final vehicleData = vehicleDoc.data();
+        if (platQuery.docs.isNotEmpty) {
+          vehicleData = platQuery.docs.first.data();
+        }
+      }
+
+      if (vehicleData == null) return {};
+
       final ownerId = vehicleData['ownerId'];
       final jenis = vehicleData['jenis'] ?? '-';
 
@@ -192,7 +211,7 @@ class DetailKendaraanPage extends StatelessWidget {
         }
       }
 
-      // 2. Cari nama user di users berdasarkan ownerId
+      // 3. Cari nama user di users berdasarkan ownerId
       String ownerName = '-';
       if (ownerId != null) {
         final userDoc = await FirebaseFirestore.instance

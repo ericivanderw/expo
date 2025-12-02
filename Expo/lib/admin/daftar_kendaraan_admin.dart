@@ -7,7 +7,8 @@ import 'package:expo/widgets/button.dart';
 import 'package:expo/user/tambah_kendaraan.dart';
 
 class DaftarKendaraanAdminPage extends StatefulWidget {
-  const DaftarKendaraanAdminPage({super.key});
+  final String? initialStatus;
+  const DaftarKendaraanAdminPage({super.key, this.initialStatus});
 
   @override
   State<DaftarKendaraanAdminPage> createState() =>
@@ -15,7 +16,7 @@ class DaftarKendaraanAdminPage extends StatefulWidget {
 }
 
 class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
-  String _selectedStatus = 'pending'; // default Menunggu (Review)
+  String _selectedStatus = 'Pending'; // default Menunggu (Review)
   bool _loading = true;
 
   List<Map<String, dynamic>> _allVehicles = [];
@@ -23,6 +24,9 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialStatus != null) {
+      _selectedStatus = widget.initialStatus!;
+    }
     _loadVehicles();
   }
 
@@ -33,37 +37,74 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
           .orderBy('createdAt', descending: true)
           .get();
 
+      // Fetch all unique ownerIds first to minimize reads
+      final ownerIds = snapshot.docs
+          .map((doc) => doc.data()['ownerId'] as String?)
+          .where((id) => id != null && id.isNotEmpty)
+          .toSet();
+
+      final Map<String, String> ownerNames = {};
+      if (ownerIds.isNotEmpty) {
+        // Firestore 'in' query supports up to 10 items.
+        // For scalability, it's better to fetch individually or in batches.
+        // For now, we'll fetch individually as it's simpler and safer for small datasets.
+        // Optimization: In a real app, use a batched fetch or cache.
+        for (var id in ownerIds) {
+          if (id == null) continue;
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(id)
+              .get();
+          if (userDoc.exists) {
+            final data = userDoc.data();
+            ownerNames[id] = data?['nama'] ?? data?['username'] ?? 'Unknown';
+          }
+        }
+      }
+
       final vehicles = snapshot.docs.map((doc) {
         final d = doc.data();
 
         String rawStatus = d['status']?.toString().toLowerCase() ?? 'pending';
-        String normalizedStatus = 'pending';
+        String normalizedStatus = 'Pending';
 
         if (rawStatus == 'approved' || rawStatus == 'verified') {
-          normalizedStatus = 'approved';
+          normalizedStatus = 'Approved';
         } else if (rawStatus == 'rejected') {
-          normalizedStatus = 'rejected';
+          normalizedStatus = 'Rejected';
         } else {
-          normalizedStatus = 'pending';
+          normalizedStatus = 'Pending';
         }
+
+        final ownerId = d['ownerId'] ?? '';
+        final ownerName = ownerNames[ownerId] ?? 'Unknown User';
 
         return {
           'id': doc.id,
           'plate': d['plat'] ?? '',
-          'owner': d['merk'] ?? '',
-          'vehicleName': d['merk'] ?? '',
+          'owner': ownerName, // Now correctly populated from users collection
+          'vehicleName':
+              d['merk'] ?? '', // This might still be empty if not saved
           'color': "N/A",
           'type': d['jenis'] ?? '',
           'status': normalizedStatus,
           'date': d['createdAt'] != null
               ? (d['createdAt'] as Timestamp).toDate()
               : null,
-          'keterangan': '',
+          'kategori': d['kategori'] ?? '', // Map kategori from Firestore
+          'keterangan':
+              d['kategori'] ??
+              '', // Also map to keterangan for backward compatibility if needed
           'foto': 'assets/car.png',
-          'ownerId': d['ownerId'] ?? '',
+          'ownerId': ownerId,
           'submittedDate': d['createdAt'] != null
               ? (d['createdAt'] as Timestamp).toDate().toString()
               : '',
+          'createdAt': d['createdAt'] != null
+              ? DateFormat(
+                  'd MMM yyyy, HH:mm',
+                ).format((d['createdAt'] as Timestamp).toDate())
+              : '-',
         };
       }).toList();
 
@@ -84,7 +125,7 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
 
       // 1️⃣ Update status di kendaraan_request
       await firestore.collection('kendaraan_request').doc(docId).update({
-        'status': 'approved',
+        'status': 'Approved',
         'approvedAt': FieldValue.serverTimestamp(),
       });
 
@@ -96,8 +137,7 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
         'ownerId': data['ownerId'], // ownerId asli
         'createdAt': data['date'], // tanggal submit
         'approvedAt': FieldValue.serverTimestamp(),
-        'foto': data['foto'], // placeholder
-        'keterangan': data['keterangan'],
+        'keterangan': data['kategori'],
       });
 
       print("⭐ APPROVED & DIPINDAHKAN ke plat_terdaftar");
@@ -118,11 +158,11 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
 
   int get _totalCount => _allVehicles.length;
   int get _reviewCount =>
-      _allVehicles.where((v) => v['status'] == 'pending').length;
+      _allVehicles.where((v) => v['status'] == 'Pending').length;
   int get _verifiedCount =>
-      _allVehicles.where((v) => v['status'] == 'approved').length;
+      _allVehicles.where((v) => v['status'] == 'Approved').length;
   int get _rejectedCount =>
-      _allVehicles.where((v) => v['status'] == 'rejected').length;
+      _allVehicles.where((v) => v['status'] == 'Rejected').length;
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +213,6 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
               ],
             ),
           ),
-          Positioned(bottom: 20, left: 20, right: 20, child: _buildAddButton()),
         ],
       ),
     );
@@ -298,9 +337,9 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
       ),
       child: Row(
         children: [
-          _buildTabItem("Review", "pending", _reviewCount, Colors.orange),
-          _buildTabItem("Approved", "approved", _verifiedCount, Colors.green),
-          _buildTabItem("Rejected", "rejected", _rejectedCount, Colors.red),
+          _buildTabItem("Review", "Pending", _reviewCount, Colors.orange),
+          _buildTabItem("Approved", "Approved", _verifiedCount, Colors.green),
+          _buildTabItem("Rejected", "Rejected", _rejectedCount, Colors.red),
         ],
       ),
     );
