@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:expo/services/localization_service.dart';
 
 class DetailPengumumanPage extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -9,17 +10,20 @@ class DetailPengumumanPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String title = data['judul'] ?? 'No Title';
-    String description = data['deskripsi'] ?? 'No Description';
+    String title = data['judul'] ?? tr('no_title');
+    String description = data['deskripsi'] ?? tr('no_description');
     Timestamp? eventDateTimestamp = data['tanggal_kegiatan'] as Timestamp?;
     Timestamp? createdTimestamp = data['createdAt'] as Timestamp?;
 
     String eventDateStr = eventDateTimestamp != null
-        ? DateFormat('d MMMM yyyy').format(eventDateTimestamp.toDate())
+        ? DateFormat(
+            'd MMMM yyyy',
+            LocalizationService().localeNotifier.value.languageCode,
+          ).format(eventDateTimestamp.toDate())
         : '-';
     String uploadedStr = createdTimestamp != null
-        ? "Uploaded ${DateFormat('d MMM yyyy, HH:mm').format(createdTimestamp.toDate())}"
-        : "Uploaded -";
+        ? "${tr('uploaded')} ${DateFormat('d MMM yyyy, HH:mm', LocalizationService().localeNotifier.value.languageCode).format(createdTimestamp.toDate())}"
+        : "${tr('uploaded')} -";
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -49,9 +53,9 @@ class DetailPengumumanPage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const Text(
-                          'Detail Pengumuman',
-                          style: TextStyle(
+                        Text(
+                          tr('detail_pengumuman_title'),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
@@ -117,10 +121,19 @@ class DetailPengumumanPage extends StatelessWidget {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: Image.asset(
-                                'assets/gotongroyong.png',
+                                (data['gambar'] != null &&
+                                        data['gambar'].toString().isNotEmpty)
+                                    ? data['gambar']
+                                    : 'assets/gotongroyong.png',
                                 width: double.infinity,
-                                height: 250,
-                                fit: BoxFit.cover,
+                                fit: BoxFit.fitWidth,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Image.asset(
+                                    'assets/gotongroyong.png',
+                                    width: double.infinity,
+                                    fit: BoxFit.fitWidth,
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -143,9 +156,9 @@ class DetailPengumumanPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Deskripsi',
-                                    style: TextStyle(
+                                  Text(
+                                    tr('deskripsi'),
+                                    style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.black87,
@@ -183,9 +196,9 @@ class DetailPengumumanPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Tanggal Kegiatan',
-                                    style: TextStyle(
+                                  Text(
+                                    tr('tanggal_kegiatan'),
+                                    style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.black87,
@@ -218,9 +231,9 @@ class DetailPengumumanPage extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Uploaded By',
-                                  style: TextStyle(
+                                Text(
+                                  tr('uploaded_by'),
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.black87,
@@ -232,37 +245,36 @@ class DetailPengumumanPage extends StatelessWidget {
                                     Container(
                                       width: 40,
                                       height: 40,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF7C68BE),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Center(
-                                        child: Text(
-                                          'A',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFB0A4D8),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2,
                                         ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 24,
+                                        color: Colors.white54,
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    const Column(
+                                    Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Admin',
-                                          style: TextStyle(
+                                          tr('admin'),
+                                          style: const TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.black87,
                                           ),
                                         ),
                                         Text(
-                                          'Pengurus Keamanan',
-                                          style: TextStyle(
+                                          tr('pengurus_keamanan'),
+                                          style: const TextStyle(
                                             fontSize: 12,
                                             color: Colors.black54,
                                           ),

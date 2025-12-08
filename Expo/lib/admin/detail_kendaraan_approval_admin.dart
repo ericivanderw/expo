@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/page_header.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expo/services/localization_service.dart';
+import 'package:intl/intl.dart';
 
 class DetailKendaraanApprovalAdminPage extends StatefulWidget {
   final Map<String, dynamic> vehicle;
@@ -27,27 +29,73 @@ class _DetailKendaraanApprovalAdminPageState
   Future<void> updateStatus(String newStatus) async {
     final firestore = FirebaseFirestore.instance;
     final v = widget.vehicle;
-
     final docId = v['id'];
 
     try {
-      // Update status request
-      await firestore.collection('kendaraan_request').doc(docId).update({
-        'status': newStatus,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      // 1. Fetch ORIGINAL document to ensure we copy ALL fields exactly
+      final docSnap = await firestore
+          .collection('kendaraan_request')
+          .doc(docId)
+          .get();
 
-      // Jika approved → masukkan ke plat_terdaftar
-      if (newStatus == 'approved') {
-        await firestore.collection('plat_terdaftar').add({
-          'plat': v['plate'] ?? '',
-          'merk': v['merk'] ?? '',
-          'jenis': v['type'] ?? '',
-          'ownerId': v['ownerId'] ?? '-',
-          'fotoUrl': v['fotoUrl'] ?? '',
-          'kategori': v['kategori'] ?? '',
+      if (!docSnap.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: Data tidak ditemukan (sudah dihapus?)"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final originalData = docSnap.data() as Map<String, dynamic>;
+
+      // 2. Prepare data to save (Copy original fields)
+      final dataToSave = Map<String, dynamic>.from(originalData);
+
+      // 3. Add Status Fields
+      if (newStatus == 'Approved') {
+        dataToSave['approvedAt'] = FieldValue.serverTimestamp();
+        // Ensure 'status' is updated if needed, or keep original?
+        // Usually approved docs don't need 'status' field if collection implies it,
+        // but let's set it to Verified/Approved just in case.
+        dataToSave['status'] = 'Verified';
+
+        // Add to plat_terdaftar
+        await firestore.collection('plat_terdaftar').add(dataToSave);
+
+        // Delete from kendaraan_request
+        await firestore.collection('kendaraan_request').doc(docId).delete();
+
+        // Send Notification
+        await firestore.collection('notifications').add({
+          'userId': originalData['ownerId'] ?? '-',
+          'title': tr('kendaraan_disetujui'),
+          'message':
+              '${tr('kendaraan_dengan_plat')} ${originalData['plat'] ?? '-'} ${tr('telah_disetujui_admin')}',
+          'type': 'vehicle_status',
+          'isRead': false,
           'createdAt': FieldValue.serverTimestamp(),
-          'approvedAt': FieldValue.serverTimestamp(),
+        });
+      } else if (newStatus == 'Rejected') {
+        dataToSave['rejectedAt'] = FieldValue.serverTimestamp();
+        dataToSave['status'] = 'Rejected';
+
+        // Add to plat_ditolak
+        await firestore.collection('plat_ditolak').add(dataToSave);
+
+        // Delete from kendaraan_request
+        await firestore.collection('kendaraan_request').doc(docId).delete();
+
+        // Send Notification
+        await firestore.collection('notifications').add({
+          'userId': originalData['ownerId'] ?? '-',
+          'title': tr('kendaraan_ditolak'),
+          'message':
+              '${tr('kendaraan_dengan_plat')} ${originalData['plat'] ?? '-'} ${tr('telah_ditolak_admin')}',
+          'type': 'vehicle_status',
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
         });
       }
 
@@ -65,22 +113,29 @@ class _DetailKendaraanApprovalAdminPageState
     Color statusColor;
     String statusText;
 
-    if (_selectedStatus == 'approved') {
+    // Normalize status for display logic
+    String currentStatus = _selectedStatus.toLowerCase();
+
+    if (currentStatus == 'approved' || currentStatus == 'verified') {
       statusColor = Colors.green;
-      statusText = 'Verified';
-    } else if (_selectedStatus == 'rejected') {
+      statusText = tr('approved');
+    } else if (currentStatus == 'rejected') {
       statusColor = Colors.red;
-      statusText = 'Rejected';
+      statusText = tr('rejected');
     } else {
       statusColor = const Color(0xFF7C68BE);
-      statusText = 'Review';
+      statusText = tr('pending');
     }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
         children: [
-          const PageHeader(title: 'Detail Kendaraan', showBackButton: false),
+          PageHeader(
+            title: tr('detail_kendaraan'),
+            showBackButton: false,
+            titleTopPadding: 16.0,
+          ),
 
           SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 120, 20, 100),
@@ -110,8 +165,8 @@ class _DetailKendaraanApprovalAdminPageState
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Status',
+                              Text(
+                                tr('status'),
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -119,7 +174,7 @@ class _DetailKendaraanApprovalAdminPageState
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Submitted at ${widget.vehicle['createdAt'] ?? '-'}',
+                                '${tr('submitted_at')} ${widget.vehicle['createdAt'] ?? '-'}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
@@ -152,27 +207,112 @@ class _DetailKendaraanApprovalAdminPageState
 
                       // DETAIL BOXES
                       _buildDetailBox(
-                        'Nama Pemilik',
+                        tr('nama_pemilik'),
                         widget.vehicle['owner'] ?? '-',
                       ),
                       const SizedBox(height: 12),
                       _buildDetailBox(
-                        'Jenis Kendaraan',
-                        widget.vehicle['type'] ?? '-',
+                        tr('jenis_kendaraan'),
+                        tr(
+                          (widget.vehicle['type'] ?? '-')
+                              .toString()
+                              .toLowerCase(),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       _buildDetailBox(
-                        'Plat Kendaraan',
+                        tr('plat_kendaraan'),
                         widget.vehicle['plate'] ?? '-',
                       ),
                       const SizedBox(height: 12),
                       _buildDetailBox(
-                        'Keterangan',
-                        widget.vehicle['kategori'] ?? '-',
+                        tr('keterangan'),
+                        tr(
+                          (widget.vehicle['kategori'] ?? '-')
+                              .toString()
+                              .toLowerCase(),
+                        ),
                       ),
+                      if ((widget.vehicle['kategori'] ?? '')
+                              .toString()
+                              .toLowerCase() ==
+                          'tamu') ...[
+                        const SizedBox(height: 12),
+                        Builder(
+                          builder: (context) {
+                            dynamic rawDate = widget.vehicle['kedatangan'];
+                            String dateStr = '-';
+                            if (rawDate != null) {
+                              if (rawDate is Timestamp) {
+                                dateStr = DateFormat(
+                                  'dd MMM yyyy',
+                                  LocalizationService()
+                                      .localeNotifier
+                                      .value
+                                      .languageCode,
+                                ).format(rawDate.toDate());
+                              } else {
+                                dateStr = rawDate.toString();
+                              }
+                            }
+                            return _buildDetailBox(
+                              tr('tanggal_kedatangan'),
+                              dateStr,
+                            );
+                          },
+                        ),
+                      ],
 
                       const SizedBox(height: 24),
                     ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Back Button (Positioned on top to be clickable)
+          // Back Button (Positioned on top to be clickable)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 20,
+                        top: 38,
+                      ), // Matches PageHeader: 28 (padding) + 10 (button top)
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFEFEFE),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.arrow_back_ios_new,
+                                color: Color(0xFF7A5AF8),
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -185,89 +325,60 @@ class _DetailKendaraanApprovalAdminPageState
               bottom: 0,
               left: 0,
               right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => updateStatus("Approved"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: const Text(
-                          'Approve',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => updateStatus("Rejected"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF44336),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: const Text(
-                          'Reject',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // CUSTOM BACK BUTTON (Positioned on top)
-          Positioned(
-            top: 0,
-            left: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 0, 0),
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
                   child: Container(
-                    width: 48,
-                    height: 48,
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Color(0xFF7C68BE),
-                          size: 20,
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => updateStatus("Approved"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4CAF50),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                            child: Text(
+                              tr('approve'),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => updateStatus("Rejected"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF44336),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                            child: Text(
+                              tr('reject'),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

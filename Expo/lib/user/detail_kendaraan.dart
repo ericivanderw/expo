@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/appbarback.dart';
+import 'package:expo/services/localization_service.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -18,7 +19,14 @@ class DetailKendaraanPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: const AppBarBack(title: "Details"),
+      appBar: AppBarBack(
+        title: tr('detail_kendaraan'),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -32,10 +40,10 @@ class DetailKendaraanPage extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(left: 5.0),
                       child: Text(
-                        "Status",
+                        tr('status'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -61,7 +69,7 @@ class DetailKendaraanPage extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            statusText,
+                            tr(statusText.toLowerCase()),
                             style: TextStyle(
                               color: statusColor,
                               fontWeight: FontWeight.w600,
@@ -93,13 +101,16 @@ class DetailKendaraanPage extends StatelessWidget {
                   child: FutureBuilder<Map<String, dynamic>>(
                     future: _fetchVehicleDetails(data['plat'] ?? ''),
                     builder: (context, snapshot) {
-                      String ownerName = "Loading...";
-                      String jenis = "Loading...";
-                      String date = "Loading...";
+                      String ownerName = tr('memuat');
+                      String jenis = tr('memuat');
+                      String date = tr('memuat');
 
                       if (snapshot.hasData) {
                         ownerName = snapshot.data!['ownerName'] ?? '-';
-                        jenis = snapshot.data!['jenis'] ?? '-';
+                        jenis = tr(
+                          snapshot.data!['jenis']?.toString().toLowerCase() ??
+                              '-',
+                        );
                         date = snapshot.data!['date'] ?? '-';
                       } else if (snapshot.hasError) {
                         ownerName = "-";
@@ -115,16 +126,16 @@ class DetailKendaraanPage extends StatelessWidget {
 
                       return Column(
                         children: [
-                          _buildDetailField("Nama Pemilik", ownerName),
+                          _buildDetailField(tr('nama_pemilik'), ownerName),
                           const SizedBox(height: 16),
                           _buildDetailField(
-                            "Plat Kendaraan",
+                            tr('plat_kendaraan'),
                             data['plat'] ?? '-',
                           ),
                           const SizedBox(height: 16),
-                          _buildDetailField("Jenis Kendaraan", jenis),
+                          _buildDetailField(tr('jenis_kendaraan'), jenis),
                           const SizedBox(height: 16),
-                          _buildDetailField("Tanggal & Waktu", date),
+                          _buildDetailField(tr('tanggal_waktu'), date),
                         ],
                       );
                     },
@@ -192,6 +203,17 @@ class DetailKendaraanPage extends StatelessWidget {
 
         if (platQuery.docs.isNotEmpty) {
           vehicleData = platQuery.docs.first.data();
+        } else {
+          // 3. Jika tidak ada, cari di plat_ditolak
+          var rejectedQuery = await FirebaseFirestore.instance
+              .collection('plat_ditolak')
+              .where('plat', isEqualTo: plat)
+              .limit(1)
+              .get();
+
+          if (rejectedQuery.docs.isNotEmpty) {
+            vehicleData = rejectedQuery.docs.first.data();
+          }
         }
       }
 
@@ -202,7 +224,13 @@ class DetailKendaraanPage extends StatelessWidget {
 
       // Format Date
       String dateStr = '-';
-      if (vehicleData['createdAt'] != null) {
+
+      // Use passed date (Log Time) if available
+      if (data['date'] != null) {
+        dateStr = data['date'];
+      }
+      // Fallback to createdAt (Registration Time)
+      else if (vehicleData['createdAt'] != null) {
         if (vehicleData['createdAt'] is Timestamp) {
           DateTime dt = (vehicleData['createdAt'] as Timestamp).toDate();
           dateStr = "${dt.day}/${dt.month}/${dt.year} ${dt.hour}:${dt.minute}";

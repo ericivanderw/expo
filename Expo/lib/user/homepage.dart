@@ -1,4 +1,5 @@
 import 'package:expo/user/profil.dart';
+import 'package:expo/services/localization_service.dart';
 import 'package:expo/user/riwayat_kendaraan.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/bottom_navbar.dart';
@@ -56,9 +57,9 @@ class _HomePageUserState extends State<HomePageUser> {
         now.difference(currentBackPressTime!) > const Duration(seconds: 2)) {
       currentBackPressTime = now;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tekan sekali lagi untuk keluar'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(tr('press_again_to_exit')),
+          duration: const Duration(seconds: 2),
         ),
       );
       return false;
@@ -71,7 +72,7 @@ class _HomePageUserState extends State<HomePageUser> {
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: const Color(0xFFF1F3F8),
         bottomNavigationBar: UserBottomNavBar(
           currentIndex: _currentIndex,
           onTap: _onItemTapped,
@@ -92,23 +93,21 @@ class _HomePageUserState extends State<HomePageUser> {
   }
 
   Widget _buildHomeContent() {
-    return SafeArea(
-      child: Stack(
-        children: [
-          _buildHeader(),
-          Align(
-            alignment: Alignment.topCenter,
-            child: Column(
-              children: [
-                const SizedBox(height: 110),
-                _buildMenuUtama(context),
-                const SizedBox(height: 10),
-                Expanded(child: _buildPengumuman(context)),
-              ],
-            ),
+    return Stack(
+      children: [
+        _buildHeader(),
+        Align(
+          alignment: Alignment.topCenter,
+          child: Column(
+            children: [
+              const SizedBox(height: 110),
+              _buildMenuUtama(context),
+              const SizedBox(height: 10),
+              SizedBox(height: 350, child: _buildPengumuman(context)),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -130,7 +129,7 @@ class _HomePageUserState extends State<HomePageUser> {
           height: 200,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF8C6CCF), Color(0xFF8E9BCB)],
+              colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -162,10 +161,10 @@ class _HomePageUserState extends State<HomePageUser> {
                             final userId = storage.read('userId');
 
                             if (userId == null) {
-                              return const Text(
-                                "Halo, User!",
+                              return Text(
+                                "${tr('halo')}, User!",
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Color(0xFFFEFEFE),
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -180,10 +179,10 @@ class _HomePageUserState extends State<HomePageUser> {
                               builder: (context, snapshot) {
                                 if (snapshot.connectionState ==
                                     ConnectionState.waiting) {
-                                  return const Text(
-                                    "Halo, ...",
+                                  return Text(
+                                    "${tr('halo')}, ...",
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFFFEFEFE),
                                       fontSize: 26,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -191,10 +190,10 @@ class _HomePageUserState extends State<HomePageUser> {
                                 }
 
                                 if (snapshot.hasError) {
-                                  return const Text(
-                                    "Halo, user!",
+                                  return Text(
+                                    "${tr('halo')}, user!",
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFFFEFEFE),
                                       fontSize: 26,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -203,10 +202,10 @@ class _HomePageUserState extends State<HomePageUser> {
 
                                 if (!snapshot.hasData ||
                                     !snapshot.data!.exists) {
-                                  return const Text(
-                                    "Halo, user!",
+                                  return Text(
+                                    "${tr('halo')}, user!",
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFFFEFEFE),
                                       fontSize: 26,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -222,9 +221,9 @@ class _HomePageUserState extends State<HomePageUser> {
                                     'User';
 
                                 return Text(
-                                  "Halo, $nama!",
+                                  "${tr('halo')}, $nama!",
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Color(0xFFFEFEFE),
                                     fontSize: 26,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -234,9 +233,12 @@ class _HomePageUserState extends State<HomePageUser> {
                           },
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          "Selamat Datang di Entrify",
-                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        Text(
+                          tr('selamat_datang'),
+                          style: TextStyle(
+                            color: Color(0xFFFEFEFE),
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -268,7 +270,7 @@ class _HomePageUserState extends State<HomePageUser> {
           margin: const EdgeInsets.fromLTRB(16, 30, 16, 0),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFEFEFE),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -281,10 +283,10 @@ class _HomePageUserState extends State<HomePageUser> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 16),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
                 child: Text(
-                  "Menu Utama",
+                  tr('menu_utama'),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -297,14 +299,14 @@ class _HomePageUserState extends State<HomePageUser> {
                 children: [
                   _menuItem(
                     icon: Icons.document_scanner,
-                    title: "Daftar\nKendaraan",
+                    title: tr('daftar_kendaraan'),
                     onTap: () {
                       Navigator.pushNamed(context, "/daftar_kendaraan");
                     },
                   ),
                   _menuItem(
                     icon: Icons.history,
-                    title: "Riwayat\nKendaraan",
+                    title: tr('riwayat_kendaraan'),
                     onTap: () {
                       _onItemTapped(2);
                     },
@@ -356,7 +358,7 @@ class _HomePageUserState extends State<HomePageUser> {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFEFEFE),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -372,16 +374,16 @@ class _HomePageUserState extends State<HomePageUser> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    "Pengumuman",
+                  Text(
+                    tr('pengumuman'),
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   GestureDetector(
                     onTap: () {
                       _onItemTapped(1);
                     },
-                    child: const Text(
-                      "See More",
+                    child: Text(
+                      tr('see_more'),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.blueGrey,
@@ -392,8 +394,8 @@ class _HomePageUserState extends State<HomePageUser> {
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
-                "Informasi Pengumuman Bulan Ini",
+              Text(
+                tr('info_pengumuman'),
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
               const SizedBox(height: 16),
@@ -410,7 +412,7 @@ class _HomePageUserState extends State<HomePageUser> {
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
-                      return const Center(child: Text('Something went wrong'));
+                      return Center(child: Text(tr('something_went_wrong')));
                     }
 
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -418,7 +420,7 @@ class _HomePageUserState extends State<HomePageUser> {
                     }
 
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(child: Text('Tidak ada pengumuman'));
+                      return Center(child: Text(tr('tidak_ada_pengumuman')));
                     }
 
                     return ListView.builder(
@@ -443,7 +445,7 @@ class _HomePageUserState extends State<HomePageUser> {
   }
 
   Widget _pengumumanItem(Map<String, dynamic> data) {
-    String title = data['judul'] ?? 'No Title';
+    String title = data['judul'] ?? tr('no_title');
     Timestamp? timestamp = data['tanggal_kegiatan'] as Timestamp?;
     String dateStr = timestamp != null
         ? "${timestamp.toDate().day}/${timestamp.toDate().month}/${timestamp.toDate().year}"
@@ -472,17 +474,23 @@ class _HomePageUserState extends State<HomePageUser> {
         ),
         child: Row(
           children: [
-            Container(
-              width: 55,
-              height: 55,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                image: const DecorationImage(
-                  image: AssetImage(
-                    "assets/gotongroyong.png",
-                  ), // Use asset for now as no image in Firestore
-                  fit: BoxFit.cover,
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                (data['gambar'] != null && data['gambar'].toString().isNotEmpty)
+                    ? data['gambar']
+                    : 'assets/gotongroyong.png',
+                width: 55,
+                height: 55,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(
+                    'assets/gotongroyong.png',
+                    width: 55,
+                    height: 55,
+                    fit: BoxFit.cover,
+                  );
+                },
               ),
             ),
             const SizedBox(width: 12),

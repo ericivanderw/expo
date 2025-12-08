@@ -13,37 +13,27 @@ class UserBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black87, // Background hitam full width
+      color: Colors.white, // Background putih
       child: SafeArea(
-        top:
-            false, // Jangan berikan padding atas, hanya bawah (untuk HP kekinian)
+        top: false,
         child: Column(
-          // KUNCI 1: mainAxisSize min MENCEGAH navbar memenuhi layar vertikal
           mainAxisSize: MainAxisSize.min,
           children: [
             Center(
               child: Container(
-                // KUNCI 2: Batasi lebar maks 500, tapi width tetap mengikuti layar jika < 500
                 constraints: const BoxConstraints(maxWidth: 500),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                ), // Sedikit tambah padding vertikal karena teks hilang
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // KUNCI 3: Expanded MEMAKSA item berbagi ruang rata & mencegah overflow kesamping
-                    Expanded(child: _buildNavItem(Icons.home, "Home", 0)),
+                    Expanded(child: _buildNavItem(Icons.home, 0)),
                     Expanded(
-                      child: _buildNavItem(
-                        Icons.announcement_outlined,
-                        "Pengumuman",
-                        1,
-                      ),
+                      child: _buildNavItem(Icons.announcement_outlined, 1),
                     ),
-                    Expanded(
-                      child: _buildNavItem(Icons.list_alt_outlined, "Log", 2),
-                    ),
-                    Expanded(
-                      child: _buildNavItem(Icons.person_outline, "Profil", 3),
-                    ),
+                    Expanded(child: _buildNavItem(Icons.list_alt_outlined, 2)),
+                    Expanded(child: _buildNavItem(Icons.person_outline, 3)),
                   ],
                 ),
               ),
@@ -54,38 +44,20 @@ class UserBottomNavBar extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(IconData icon, int index) {
     final bool isSelected = currentIndex == index;
 
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Pastikan column item juga minimalis
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             icon,
-            size: 24,
-            color: isSelected ? Colors.white : Colors.white70,
-          ),
-          const SizedBox(height: 4),
-
-          // KUNCI 4: FittedBox mencegah teks overflow/nabrak jika layar SANGAT kecil
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1, // Pastikan cuma 1 baris
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isSelected ? Colors.white : Colors.white70,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-            ),
+            size: 28, // Sedikit perbesar icon
+            color: isSelected ? Colors.black : Colors.grey,
           ),
         ],
       ),

@@ -1,10 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/appbarback.dart';
-import 'package:expo/admin/detail_pengumuman.dart';
-import 'package:expo/admin/tambah_pengumuman.dart';
+import 'package:expo/user/detail_pengumuman.dart';
 import 'package:expo/services/localization_service.dart';
-import 'package:intl/intl.dart';
 
 class DaftarPengumumanPage extends StatelessWidget {
   const DaftarPengumumanPage({super.key});
@@ -72,19 +70,14 @@ class DaftarPengumumanPage extends StatelessWidget {
     String title = data['judul'] ?? tr('no_title');
     Timestamp? timestamp = data['tanggal_kegiatan'] as Timestamp?;
     String date = timestamp != null
-        ? DateFormat(
-            'd/M/yyyy',
-            LocalizationService().localeNotifier.value.languageCode,
-          ).format(timestamp.toDate())
+        ? "${timestamp.toDate().day}/${timestamp.toDate().month}/${timestamp.toDate().year}"
         : "-";
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => DetailPengumumanPage(data: data),
-          ),
+          MaterialPageRoute(builder: (context) => DetailPengumuman(data: data)),
         );
       },
       child: Container(
@@ -121,7 +114,7 @@ class DaftarPengumumanPage extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,27 +122,27 @@ class DaftarPengumumanPage extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(
-                        Icons.access_time,
+                      const Icon(
+                        Icons.calendar_today,
                         size: 14,
-                        color: Colors.grey.shade600,
+                        color: Colors.grey,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         date,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: Colors.grey,
                         ),
                       ),
                     ],
@@ -157,86 +150,9 @@ class DaftarPengumumanPage extends StatelessWidget {
                 ],
               ),
             ),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            TambahPengumumanPage(data: data, docId: docId),
-                      ),
-                    );
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  color: Colors.grey.shade700,
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20),
-                  onPressed: () {
-                    _showDeleteDialog(context, docId);
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  color: Colors.red.shade400,
-                ),
-              ],
-            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context, String docId) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(tr('hapus_pengumuman')),
-        content: Text(tr('konfirmasi_hapus_pengumuman')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(tr('batal')),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                await FirebaseFirestore.instance
-                    .collection('pengumuman')
-                    .doc(docId)
-                    .delete();
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(tr('pengumuman_dihapus')),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("${tr('terjadi_kesalahan')}: $e"),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text(
-              tr('hapus'),
-              style: TextStyle(color: Colors.red.shade400),
-            ),
-          ),
-        ],
       ),
     );
   }

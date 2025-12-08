@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expo/admin/detail_kendaraan_admin.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:expo/services/localization_service.dart';
 
 class RiwayatKendaraanAdminPage extends StatefulWidget {
   const RiwayatKendaraanAdminPage({super.key});
@@ -19,21 +20,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
   DateTime? _selectedDate;
 
   String _monthName(int m) {
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "Mei",
-      "Jun",
-      "Jul",
-      "Agt",
-      "Sep",
-      "Okt",
-      "Nov",
-      "Des",
-    ];
-    return months[m - 1];
+    return tr('month_$m');
   }
 
   DateTime _parseDate(dynamic raw) {
@@ -172,13 +159,11 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF1F3F8),
       body: Column(
         children: [
           _buildHeader(),
           const SizedBox(height: 20),
-
-          /// ⭐ FILTERS (JUSTIFY 3 KOLOM)
           _buildFilters(),
 
           const SizedBox(height: 10),
@@ -222,7 +207,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
           Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
-            'Tidak ada data ditemukan',
+            tr('tidak_ada_data'),
             style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
           ),
         ],
@@ -243,7 +228,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
           width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF8C6CCF), Color(0xFF8E9BCB)],
+              colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -255,29 +240,29 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(padding, 20, padding, 30),
+              padding: EdgeInsets.fromLTRB(padding, 20, padding, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(height: 20),
+                          const SizedBox(height: 20),
                           Text(
-                            "Riwayat Kendaraan",
-                            style: TextStyle(
+                            tr('riwayat_kendaraan').replaceAll('\n', ' '),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            "Data Kendaraan Keluar-Masuk.",
-                            style: TextStyle(
+                            tr('data_keluar_masuk'),
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 14,
                             ),
@@ -291,7 +276,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 50),
 
                   // SEARCH BAR
                   Container(
@@ -304,7 +289,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                       controller: _searchController,
                       onChanged: (v) => setState(() => _searchQuery = v),
                       decoration: InputDecoration(
-                        hintText: "Search plat/type",
+                        hintText: tr('search_placeholder'),
                         border: InputBorder.none,
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
@@ -358,9 +343,13 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                   SizedBox(
                     width: itemWidth,
                     child: _buildFilterChip(
-                      label: "Status",
+                      label: tr('status'),
                       value: _statusFilter,
-                      items: ['masuk', 'keluar'],
+                      items: {
+                        'masuk': tr('masuk'),
+                        'keluar': tr('keluar_status'),
+                      },
+                      width: itemWidth,
                       onChanged: (v) => setState(() => _statusFilter = v),
                     ),
                   ),
@@ -368,9 +357,10 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                   SizedBox(
                     width: itemWidth,
                     child: _buildFilterChip(
-                      label: "Jenis",
+                      label: tr('jenis'),
                       value: _jenisFilter,
-                      items: ['Motor', 'Mobil'],
+                      items: {'Motor': tr('motor'), 'Mobil': tr('mobil')},
+                      width: itemWidth,
                       onChanged: (v) => setState(() => _jenisFilter = v),
                     ),
                   ),
@@ -387,7 +377,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
   Widget _buildDateFilter() {
     bool selected = _selectedDate != null;
 
-    String label = "Tanggal";
+    String label = tr('tanggal');
     if (selected) {
       final s = _selectedDate!;
       label = "${s.day} ${_monthName(s.month)} ${s.year}";
@@ -402,13 +392,13 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
             return Theme(
               data: Theme.of(context).copyWith(
                 colorScheme: const ColorScheme.light(
-                  primary: Color(0xFF7C68BE),
+                  primary: Color(0xFF7A5AF8),
                   onPrimary: Colors.white,
                   onSurface: Colors.black,
                 ),
                 textButtonTheme: TextButtonThemeData(
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF7C68BE),
+                    foregroundColor: const Color(0xFF7A5AF8),
                   ),
                 ),
               ),
@@ -435,22 +425,22 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                         onPressed: () {
                           Navigator.pop(context, DateTime(0));
                         },
-                        child: const Text(
-                          "Hapus Filter",
-                          style: TextStyle(color: Colors.red),
+                        child: Text(
+                          tr('hapus_filter'),
+                          style: const TextStyle(color: Colors.red),
                         ),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        child: const Text("Batal"),
+                        child: Text(tr('batal')),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context, tempSelectedDate);
                         },
-                        child: const Text("Pilih"),
+                        child: Text(tr('pilih')),
                       ),
                     ],
                   );
@@ -472,10 +462,10 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF7C68BE) : Colors.white,
+          color: selected ? const Color(0xFF7A5AF8) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? const Color(0xFF7C68BE) : Colors.grey.shade300,
+            color: selected ? const Color(0xFF7A5AF8) : Colors.grey.shade300,
           ),
         ),
         child: Row(
@@ -507,20 +497,25 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
   Widget _buildFilterChip({
     required String label,
     required String value,
-    required List<String> items,
+    required Map<String, String> items,
+    required double width,
     required Function(String) onChanged,
   }) {
     return PopupMenuButton<String>(
       onSelected: onChanged,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 4,
+      color: Colors.white,
+      constraints: BoxConstraints.tightFor(width: width),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: value.isNotEmpty ? const Color(0xFF7C68BE) : Colors.white,
+          color: value.isNotEmpty ? const Color(0xFF7A5AF8) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: value.isNotEmpty
-                ? const Color(0xFF7C68BE)
+                ? const Color(0xFF7A5AF8)
                 : Colors.grey.shade300,
           ),
         ),
@@ -532,10 +527,13 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
               const Icon(Icons.filter_alt, size: 14, color: Colors.white),
             if (value.isNotEmpty) const SizedBox(width: 4),
             Text(
-              value.isEmpty ? label : value,
+              value.isEmpty ? label : (items[value] ?? value),
               style: TextStyle(
                 fontSize: 12,
                 color: value.isNotEmpty ? Colors.white : Colors.black87,
+                fontWeight: value.isNotEmpty
+                    ? FontWeight.w600
+                    : FontWeight.normal,
               ),
             ),
             const SizedBox(width: 4),
@@ -548,8 +546,22 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
         ),
       ),
       itemBuilder: (context) => [
-        PopupMenuItem(value: '', child: Text('Semua $label')),
-        ...items.map((item) => PopupMenuItem(value: item, child: Text(item))),
+        PopupMenuItem(
+          value: '',
+          child: Text(
+            '${tr('semua')} $label',
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
+          ),
+        ),
+        ...items.entries.map(
+          (entry) => PopupMenuItem(
+            value: entry.key,
+            child: Text(
+              entry.value,
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -558,7 +570,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
   Widget _buildHistoryItem(Map<String, dynamic> item) {
     final isEntry = item['isEntry'];
     final color = isEntry ? Colors.green : Colors.red;
-    final statusText = isEntry ? "Masuk" : "Keluar";
+    final statusText = isEntry ? tr('masuk') : tr('keluar_status');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -579,7 +591,7 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item['type'],
+                    tr(item['type'].toString().toLowerCase()),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -636,9 +648,9 @@ class _RiwayatKendaraanAdminPageState extends State<RiwayatKendaraanAdminPage> {
                     ),
                   );
                 },
-                child: const Text(
-                  "See Details",
-                  style: TextStyle(
+                child: Text(
+                  tr('lihat_detail'),
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,

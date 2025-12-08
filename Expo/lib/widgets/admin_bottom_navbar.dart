@@ -13,7 +13,7 @@ class AdminBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black87,
+      color: Colors.white,
       child: SafeArea(
         top: false,
         child: Column(
@@ -22,24 +22,16 @@ class AdminBottomNavBar extends StatelessWidget {
             Center(
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 500),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Expanded(child: _buildNavItem(Icons.home, "Home", 0)),
+                    Expanded(child: _buildNavItem(Icons.home, 0)),
                     Expanded(
-                      child: _buildNavItem(
-                        Icons.announcement_outlined,
-                        "Pengumuman",
-                        1,
-                      ),
+                      child: _buildNavItem(Icons.announcement_outlined, 1),
                     ),
-                    Expanded(
-                      child: _buildNavItem(Icons.list_alt_outlined, "Log", 2),
-                    ),
-                    Expanded(
-                      child: _buildNavItem(Icons.person_outline, "Profil", 3),
-                    ),
+                    Expanded(child: _buildNavItem(Icons.list_alt_outlined, 2)),
+                    Expanded(child: _buildNavItem(Icons.person_outline, 3)),
                   ],
                 ),
               ),
@@ -50,7 +42,7 @@ class AdminBottomNavBar extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(IconData icon, int index) {
     final bool isSelected = currentIndex == index;
 
     return GestureDetector(
@@ -60,27 +52,7 @@ class AdminBottomNavBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 24,
-            color: isSelected ? Colors.white : Colors.white70,
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isSelected ? Colors.white : Colors.white70,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-            ),
-          ),
+          Icon(icon, size: 28, color: isSelected ? Colors.black : Colors.grey),
         ],
       ),
     );

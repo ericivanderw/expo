@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:expo/admin/detail_kendaraan_approval_admin.dart';
 import 'package:expo/widgets/page_header.dart';
 import 'package:intl/intl.dart';
-import 'package:expo/widgets/button.dart';
-import 'package:expo/user/tambah_kendaraan.dart';
+import 'package:expo/services/localization_service.dart';
 
 class DaftarKendaraanAdminPage extends StatefulWidget {
   final String? initialStatus;
@@ -32,88 +31,188 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
 
   Future<void> _loadVehicles() async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('kendaraan_request')
+      List<Map<String, dynamic>> allVehicles = [];
+
+      // 1. Fetch Verified from 'plat_terdaftar'
+      final verifiedSnap = await FirebaseFirestore.instance
+          .collection('plat_terdaftar')
           .orderBy('createdAt', descending: true)
           .get();
 
-      // Fetch all unique ownerIds first to minimize reads
-      final ownerIds = snapshot.docs
-          .map((doc) => doc.data()['ownerId'] as String?)
-          .where((id) => id != null && id.isNotEmpty)
-          .toSet();
-
-      final Map<String, String> ownerNames = {};
-      if (ownerIds.isNotEmpty) {
-        // Firestore 'in' query supports up to 10 items.
-        // For scalability, it's better to fetch individually or in batches.
-        // For now, we'll fetch individually as it's simpler and safer for small datasets.
-        // Optimization: In a real app, use a batched fetch or cache.
-        for (var id in ownerIds) {
-          if (id == null) continue;
-          final userDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(id)
-              .get();
-          if (userDoc.exists) {
-            final data = userDoc.data();
-            ownerNames[id] = data?['nama'] ?? data?['username'] ?? 'Unknown';
-          }
-        }
-      }
-
-      final vehicles = snapshot.docs.map((doc) {
+      final verifiedVehicles = verifiedSnap.docs.map((doc) {
         final d = doc.data();
-
-        String rawStatus = d['status']?.toString().toLowerCase() ?? 'pending';
-        String normalizedStatus = 'Pending';
-
-        if (rawStatus == 'approved' || rawStatus == 'verified') {
-          normalizedStatus = 'Approved';
-        } else if (rawStatus == 'rejected') {
-          normalizedStatus = 'Rejected';
-        } else {
-          normalizedStatus = 'Pending';
-        }
-
-        final ownerId = d['ownerId'] ?? '';
-        final ownerName = ownerNames[ownerId] ?? 'Unknown User';
-
         return {
           'id': doc.id,
           'plate': d['plat'] ?? '',
-          'owner': ownerName, // Now correctly populated from users collection
-          'vehicleName':
-              d['merk'] ?? '', // This might still be empty if not saved
+          'owner': d['merk'] ?? tr('unknown'), // merk stores owner name
+          'vehicleName': '',
           'color': "N/A",
           'type': d['jenis'] ?? '',
-          'status': normalizedStatus,
+          'status': 'Approved',
           'date': d['createdAt'] != null
               ? (d['createdAt'] as Timestamp).toDate()
               : null,
-          'kategori': d['kategori'] ?? '', // Map kategori from Firestore
-          'keterangan':
-              d['kategori'] ??
-              '', // Also map to keterangan for backward compatibility if needed
-          'foto': 'assets/car.png',
-          'ownerId': ownerId,
+          'kategori': d['kategori'] ?? '',
+          'keterangan': d['kategori'] ?? '',
+          'foto': d['fotoUrl'] ?? 'assets/car.png',
+          'ownerId': d['ownerId'] ?? '',
           'submittedDate': d['createdAt'] != null
               ? (d['createdAt'] as Timestamp).toDate().toString()
               : '',
           'createdAt': d['createdAt'] != null
               ? DateFormat(
                   'd MMM yyyy, HH:mm',
+                  LocalizationService().localeNotifier.value.languageCode,
                 ).format((d['createdAt'] as Timestamp).toDate())
               : '-',
         };
       }).toList();
 
+      allVehicles.addAll(verifiedVehicles);
+
+      // 2. Fetch Requests from 'kendaraan_request'
+      final requestSnap = await FirebaseFirestore.instance
+          .collection('kendaraan_request')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      // 3. Fetch Rejected from 'plat_ditolak'
+      final rejectedSnap = await FirebaseFirestore.instance
+          .collection('plat_ditolak')
+          .orderBy('rejectedAt', descending: true)
+          .get();
+
+      // Collect all owner IDs from requests and rejected
+      final Set<String> ownerIds = {};
+
+      for (var doc in requestSnap.docs) {
+        final id = doc.data()['ownerId'] as String?;
+        if (id != null && id.isNotEmpty) ownerIds.add(id);
+      }
+
+      for (var doc in rejectedSnap.docs) {
+        final id = doc.data()['ownerId'] as String?;
+        if (id != null && id.isNotEmpty) ownerIds.add(id);
+      }
+
+      final Map<String, String> ownerNames = {};
+      if (ownerIds.isNotEmpty) {
+        for (var id in ownerIds) {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(id)
+              .get();
+          if (userDoc.exists) {
+            final data = userDoc.data();
+            ownerNames[id] =
+                data?['nama'] ?? data?['username'] ?? tr('unknown');
+          }
+        }
+      }
+
+      // Process Pending Requests
+      final requestVehicles = requestSnap.docs
+          .map((doc) {
+            final d = doc.data();
+            String rawStatus =
+                d['status']?.toString().toLowerCase() ?? 'pending';
+
+            // STRICTLY IGNORE APPROVED/VERIFIED/REJECTED from requests
+            if (rawStatus == 'approved' ||
+                rawStatus == 'verified' ||
+                rawStatus == 'rejected') {
+              return null;
+            }
+
+            final ownerId = d['ownerId'] ?? '';
+            final ownerName = ownerNames[ownerId] ?? tr('unknown_user');
+
+            return {
+              'id': doc.id,
+              'plate': d['plat'] ?? '',
+              'owner': ownerName,
+              'vehicleName': d['merk'] ?? '',
+              'color': "N/A",
+              'type': d['jenis'] ?? '',
+              'status': 'Pending',
+              'date': d['createdAt'] != null
+                  ? (d['createdAt'] as Timestamp).toDate()
+                  : null,
+              'kategori': d['kategori'] ?? '',
+              'kedatangan': d['kedatangan'],
+              'keterangan': d['kategori'] ?? '',
+              'foto': 'assets/car.png',
+              'ownerId': ownerId,
+              'submittedDate': d['createdAt'] != null
+                  ? (d['createdAt'] as Timestamp).toDate().toString()
+                  : '',
+              'createdAt': d['createdAt'] != null
+                  ? DateFormat(
+                      'd MMM yyyy, HH:mm',
+                      LocalizationService().localeNotifier.value.languageCode,
+                    ).format((d['createdAt'] as Timestamp).toDate())
+                  : '-',
+            };
+          })
+          .where((e) => e != null)
+          .cast<Map<String, dynamic>>()
+          .toList();
+
+      allVehicles.addAll(requestVehicles);
+
+      // Process Rejected Vehicles
+      final rejectedVehicles = rejectedSnap.docs.map((doc) {
+        final d = doc.data();
+        final ownerId = d['ownerId'] ?? '';
+        final ownerName = ownerNames[ownerId] ?? tr('unknown_user');
+
+        return {
+          'id': doc.id,
+          'plate': d['plat'] ?? '',
+          'owner': ownerName,
+          'vehicleName': d['merk'] ?? '',
+          'color': "N/A",
+          'type': d['jenis'] ?? '',
+          'status': 'Rejected',
+          'date': d['rejectedAt'] != null
+              ? (d['rejectedAt'] as Timestamp).toDate()
+              : null,
+          'kategori': d['kategori'] ?? '',
+          'kedatangan': d['kedatangan'],
+          'keterangan': d['kategori'] ?? '',
+          'foto': d['fotoUrl'] ?? 'assets/car.png',
+          'ownerId': ownerId,
+          'submittedDate': d['rejectedAt'] != null
+              ? (d['rejectedAt'] as Timestamp).toDate().toString()
+              : '',
+          'createdAt': d['rejectedAt'] != null
+              ? DateFormat(
+                  'd MMM yyyy, HH:mm',
+                  LocalizationService().localeNotifier.value.languageCode,
+                ).format((d['rejectedAt'] as Timestamp).toDate())
+              : '-',
+        };
+      }).toList();
+
+      allVehicles.addAll(rejectedVehicles);
+
+      // Sort by date descending
+      allVehicles.sort((a, b) {
+        DateTime? dateA = a['date'];
+        DateTime? dateB = b['date'];
+        if (dateA == null && dateB == null) return 0;
+        if (dateA == null) return 1;
+        if (dateB == null) return -1;
+        return dateB.compareTo(dateA);
+      });
+
+      if (!mounted) return;
       setState(() {
-        _allVehicles = vehicles;
+        _allVehicles = allVehicles;
         _loading = false;
       });
 
-      print("🔥 Data Loaded: ${vehicles.length}");
+      print("🔥 Data Loaded: ${allVehicles.length}");
     } catch (e) {
       print("ERROR LOAD VEHICLES: $e");
     }
@@ -167,10 +266,14 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF1F3F8),
       body: Stack(
         children: [
-          const PageHeader(title: 'Daftar\nKendaraan', rightIcon: null),
+          PageHeader(
+            title: tr('daftar_kendaraan').replaceAll('\n', ' '),
+            rightIcon: null,
+            titleTopPadding: 16.0,
+          ),
           SafeArea(
             child: Column(
               children: [
@@ -181,28 +284,36 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
                       constraints: const BoxConstraints(maxWidth: 600),
                       child: Column(
                         children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 16),
+                                _buildStatsSection(),
+                                const SizedBox(height: 20),
+                                _buildStatusTabs(),
+                                const SizedBox(height: 16),
+                              ],
+                            ),
+                          ),
                           Expanded(
                             child: _loading
                                 ? const Center(
                                     child: CircularProgressIndicator(),
                                   )
-                                : ListView(
+                                : ListView.builder(
                                     padding: const EdgeInsets.fromLTRB(
                                       16,
-                                      16,
+                                      0,
                                       16,
                                       100,
                                     ),
-                                    children: [
-                                      _buildStatsSection(),
-                                      const SizedBox(height: 20),
-                                      _buildStatusTabs(),
-                                      const SizedBox(height: 16),
-                                      ..._filteredVehicles.map(
-                                        (vehicle) => _buildVehicleCard(vehicle),
-                                      ),
-                                      const SizedBox(height: 20),
-                                    ],
+                                    itemCount: _filteredVehicles.length,
+                                    itemBuilder: (context, index) {
+                                      return _buildVehicleCard(
+                                        _filteredVehicles[index],
+                                      );
+                                    },
                                   ),
                           ),
                         ],
@@ -218,25 +329,6 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
     );
   }
 
-  Widget _buildAddButton() {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: CustomButton(
-          text: "Tambah Kendaraan",
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const TambahKendaraanPage(),
-              ),
-            ).then((_) => _loadVehicles());
-          },
-        ),
-      ),
-    );
-  }
-
   Widget _buildStatsSection() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -247,33 +339,28 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Daftar Kendaraan",
-            style: TextStyle(
+          Text(
+            tr('daftar_kendaraan').replaceAll('\n', ' '),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            "Period 2024",
-            style: TextStyle(fontSize: 12, color: Colors.black54),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _buildStatCard(
-                  "Total",
+                  tr('semua'),
                   _totalCount.toString(),
-                  const Color(0xFF7C68BE),
+                  const Color(0xFF7A5AF8),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  "Review",
+                  tr('pending'),
                   _reviewCount.toString(),
                   Colors.orange,
                 ),
@@ -281,7 +368,7 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  "Verified",
+                  tr('verified'),
                   _verifiedCount.toString(),
                   Colors.green,
                 ),
@@ -297,7 +384,7 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFEFEFE),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300),
       ),
@@ -308,9 +395,12 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
             children: [
               Icon(Icons.circle, size: 10, color: color),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -337,9 +427,14 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
       ),
       child: Row(
         children: [
-          _buildTabItem("Review", "Pending", _reviewCount, Colors.orange),
-          _buildTabItem("Approved", "Approved", _verifiedCount, Colors.green),
-          _buildTabItem("Rejected", "Rejected", _rejectedCount, Colors.red),
+          _buildTabItem(tr('pending'), "Pending", _reviewCount, Colors.orange),
+          _buildTabItem(
+            tr('approved'),
+            "Approved",
+            _verifiedCount,
+            Colors.green,
+          ),
+          _buildTabItem(tr('rejected'), "Rejected", _rejectedCount, Colors.red),
         ],
       ),
     );
@@ -360,8 +455,17 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF7C68BE) : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -369,9 +473,8 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
-                  color: isSelected ? Colors.white : Colors.black54,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.black87 : Colors.black54,
                 ),
               ),
               const SizedBox(width: 6),
@@ -384,8 +487,8 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
                 child: Text(
                   count.toString(),
                   style: const TextStyle(
-                    fontSize: 10,
                     color: Colors.white,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -400,24 +503,35 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
   Widget _buildVehicleCard(Map<String, dynamic> vehicle) {
     Color statusColor;
     String statusText;
-    switch (vehicle['status']) {
+    // Normalize status to lowercase for comparison
+    String status = vehicle['status']?.toString().toLowerCase() ?? 'pending';
+
+    switch (status) {
       case "approved":
+      case "verified":
         statusColor = Colors.green;
-        statusText = "Verified";
+        statusText = tr('approved');
         break;
       case "rejected":
         statusColor = Colors.red;
-        statusText = "Rejected";
+        statusText = tr('rejected');
         break;
       default:
         statusColor = Colors.orange;
-        statusText = "Review";
+        statusText = tr('pending');
     }
 
     String formattedDate = "";
     if (vehicle['date'] != null && vehicle['date'] is DateTime) {
-      formattedDate = DateFormat('d MMM yyyy').format(vehicle['date']);
+      formattedDate = DateFormat(
+        'd MMM yyyy',
+        LocalizationService().localeNotifier.value.languageCode,
+      ).format(vehicle['date']);
     }
+
+    String dateLabel = status == 'approved' || status == 'verified'
+        ? tr('approved_at')
+        : tr('submitted_at');
 
     return GestureDetector(
       onTap: () {
@@ -433,7 +547,7 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFFEFEFE),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
@@ -442,44 +556,82 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Plate + see details
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  vehicle['plate'],
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Row(
-                  children: [
-                    Text(
-                      "See Details",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                // Icon Container
+                Builder(
+                  builder: (context) {
+                    bool isCar =
+                        (vehicle['type'] ?? '').toString().toLowerCase() ==
+                        'mobil';
+                    return Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: isCar
+                            ? const Color(0xFFE0E7FF) // Light Indigo for Car
+                            : const Color(0xFFDCFCE7), // Light Green for Bike
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(Icons.arrow_forward, size: 14),
-                  ],
+                      child: Icon(
+                        isCar ? Icons.directions_car_filled : Icons.two_wheeler,
+                        color: isCar
+                            ? const Color(0xFF4338CA) // Indigo for Car
+                            : const Color(0xFF15803D), // Green for Bike
+                        size: 24,
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Plate + see details
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            vehicle['plate'],
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Text(
+                                tr('lihat_detail'),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.arrow_forward, size: 14),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
 
-            Row(
-              children: [
-                Icon(Icons.circle, size: 12, color: statusColor),
-                const SizedBox(width: 6),
-                Text(
-                  statusText,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: Colors.black54,
+                      Row(
+                        children: [
+                          Icon(Icons.circle, size: 12, color: statusColor),
+                          const SizedBox(width: 6),
+                          Text(
+                            statusText,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -499,9 +651,12 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Nama Pemilik",
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                        Text(
+                          tr('nama_pemilik'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -518,13 +673,16 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Jenis Kendaraan",
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                        Text(
+                          tr('jenis_kendaraan'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          vehicle['type'],
+                          tr(vehicle['type'].toString().toLowerCase()),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -542,23 +700,33 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
               children: [
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.check_circle,
                       size: 14,
-                      color: Colors.grey,
+                      color: status == 'approved' || status == 'verified'
+                          ? Colors.green
+                          : (status == 'rejected' ? Colors.red : Colors.grey),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      "Submitted at $formattedDate",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      "$dateLabel $formattedDate",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: status == 'approved' || status == 'verified'
+                            ? Colors.green
+                            : (status == 'rejected' ? Colors.red : Colors.grey),
+                      ),
                     ),
                   ],
                 ),
                 Row(
                   children: [
-                    const Text(
-                      "By",
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    Text(
+                      tr('uploaded_by'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     CircleAvatar(

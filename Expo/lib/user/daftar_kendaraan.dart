@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:expo/services/localization_service.dart';
 import 'package:expo/widgets/button.dart';
 import 'package:expo/user/tambah_kendaraan.dart';
 import 'package:expo/user/detail_kendaraan_view.dart';
@@ -48,7 +49,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
         final d = doc.data();
         return {
           'id': doc.id,
-          'licensePlate': d['plat'] ?? 'Unknown',
+          'licensePlate': d['plat'] ?? tr('unknown'),
           'status': 'Verified',
           'statusColor': Colors.green,
           'ownerName': d['merk'] ?? '-', // Merk as owner name placeholder
@@ -62,9 +63,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
 
       allVehicles.addAll(verifiedData);
 
-      final verifiedPlates = verifiedData.map((v) => v['licensePlate']).toSet();
-
-      // 2. Fetch Pending/Rejected from 'kendaraan_request'
+      // 2. Fetch Pending Requests from 'kendaraan_request'
       final requestSnap = await FirebaseFirestore.instance
           .collection('kendaraan_request')
           .where('ownerId', isEqualTo: userId)
@@ -73,23 +72,30 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
       final requestData = requestSnap.docs
           .map((doc) {
             final d = doc.data();
-            // Robust normalization like in Admin page
             String rawStatus =
                 d['status']?.toString().toLowerCase() ?? 'pending';
             String normalizedStatus = 'Pending';
-            String plate = d['plat'] ?? 'Unknown';
+            String plate = d['plat'] ?? tr('unknown');
 
-            if (rawStatus == 'approved' || rawStatus == 'verified') {
-              // Check if already in plat_terdaftar to avoid duplicates
-              if (verifiedPlates.contains(plate)) {
-                return null;
+            // Check for expired Tamu vehicles
+            if (d['kategori'] == 'Tamu' && d['createdAt'] != null) {
+              final createdAt = (d['createdAt'] as Timestamp).toDate();
+              final now = DateTime.now();
+              if (now.difference(createdAt).inHours >= 24) {
+                // Lazy delete
+                FirebaseFirestore.instance
+                    .collection('kendaraan_request')
+                    .doc(doc.id)
+                    .delete();
+                return null; // Skip adding to list
               }
-              // Fallback: Show as Verified if not in plat_terdaftar yet
-              normalizedStatus = 'Verified';
-            } else if (rawStatus == 'rejected') {
-              normalizedStatus = 'Rejected';
-            } else {
-              normalizedStatus = 'Pending';
+            }
+
+            // STRICTLY IGNORE APPROVED/VERIFIED/REJECTED from requests
+            if (rawStatus == 'approved' ||
+                rawStatus == 'verified' ||
+                rawStatus == 'rejected') {
+              return null;
             }
 
             return {
@@ -97,12 +103,14 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               'licensePlate': plate,
               'status': normalizedStatus,
               'statusColor': _getStatusColor(normalizedStatus),
-              'ownerName': d['merk'],
-              'address': d['jenis'],
-              'type': d['jenis'],
+              'ownerName': d['merk'] ?? '-',
+              'address': d['jenis'] ?? '-',
+              'type': d['jenis'] ?? '-',
               'arrivalDate': d['createdAt'] != null
                   ? (d['createdAt'] as Timestamp).toDate().toString()
                   : '-',
+              'kategori':
+                  d['kategori'], // Pass kategori for filtering if needed
             };
           })
           .where((e) => e != null)
@@ -110,6 +118,30 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
           .toList();
 
       allVehicles.addAll(requestData);
+
+      // 3. Fetch Rejected from 'plat_ditolak'
+      final rejectedSnap = await FirebaseFirestore.instance
+          .collection('plat_ditolak')
+          .where('ownerId', isEqualTo: userId)
+          .get();
+
+      final rejectedData = rejectedSnap.docs.map((doc) {
+        final d = doc.data();
+        return {
+          'id': doc.id,
+          'licensePlate': d['plat'] ?? tr('unknown'),
+          'status': 'Rejected',
+          'statusColor': Colors.red,
+          'ownerName': d['merk'] ?? '-',
+          'address': d['jenis'] ?? '-',
+          'type': d['jenis'] ?? '-',
+          'arrivalDate': d['rejectedAt'] != null
+              ? (d['rejectedAt'] as Timestamp).toDate().toString()
+              : '-',
+        };
+      }).toList();
+
+      allVehicles.addAll(rejectedData);
 
       setState(() {
         _vehicles = allVehicles;
@@ -146,7 +178,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF1F3F8),
       body: Column(
         children: [
           Stack(
@@ -156,7 +188,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                 left: 0,
                 right: 0,
                 child: PageHeader(
-                  title: "Kendaraanku",
+                  title: tr('kendaraanku'),
                   showBackButton: true,
                   rightIcon: Image.asset(
                     'assets/icon-list.png',
@@ -169,7 +201,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                 bottom: false,
                 child: Column(
                   children: [
-                    const SizedBox(height: 100), // Adjusted for header height
+                    const SizedBox(height: 120), // Adjusted for header height
                     Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 600),
@@ -218,25 +250,20 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Daftar Kendaraan",
+            Text(
+              tr('daftar_kendaraan'),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              "Period 2024",
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: _buildStatCard(
-                    "Pending",
+                    tr('pending'),
                     _pendingCount.toString(),
                     Colors.orange,
                   ),
@@ -244,7 +271,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildStatCard(
-                    "Verified",
+                    tr('verified'),
                     _verifiedCount.toString(),
                     Colors.green,
                   ),
@@ -261,7 +288,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFEFEFE),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -296,16 +323,20 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFFFEFEFE),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Row(
           children: [
-            Expanded(child: _buildFilterChip("Pending", 0, _pendingCount)),
+            Expanded(child: _buildFilterChip(tr('pending'), 0, _pendingCount)),
             const SizedBox(width: 6),
-            Expanded(child: _buildFilterChip("Verified", 1, _verifiedCount)),
+            Expanded(
+              child: _buildFilterChip(tr('verified'), 1, _verifiedCount),
+            ),
             const SizedBox(width: 6),
-            Expanded(child: _buildFilterChip("Rejected", 2, _rejectedCount)),
+            Expanded(
+              child: _buildFilterChip(tr('rejected'), 2, _rejectedCount),
+            ),
           ],
         ),
       ),
@@ -321,7 +352,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF7C68BE) : Colors.transparent,
+          color: isSelected ? const Color(0xFF7A5AF8) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -331,7 +362,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 11,
                   color: isSelected ? Colors.white : Colors.black87,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
@@ -342,7 +373,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? (label == 'Verified'
+                    ? (index == 1
                           ? Colors.green
                           : const Color.fromARGB(255, 241, 144, 87))
                     : Colors.grey.shade300,
@@ -393,19 +424,34 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFFFEFEFE),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.directions_car, color: Colors.grey),
+            // Icon Container
+            Builder(
+              builder: (context) {
+                bool isCar =
+                    (vehicle['type'] ?? '').toString().toLowerCase() == 'mobil';
+                return Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: isCar
+                        ? const Color(0xFFE0E7FF) // Light Indigo for Car
+                        : const Color(0xFFDCFCE7), // Light Green for Bike
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isCar ? Icons.directions_car_filled : Icons.two_wheeler,
+                    color: isCar
+                        ? const Color(0xFF4338CA) // Indigo for Car
+                        : const Color(0xFF15803D), // Green for Bike
+                    size: 24,
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -430,7 +476,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        vehicle['status'],
+                        tr(vehicle['status'].toString().toLowerCase()),
                         style: TextStyle(
                           fontSize: 14,
                           color: vehicle['statusColor'],
@@ -453,7 +499,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: CustomButton(
-          text: "Tambah Kendaraan",
+          text: tr('tambah_kendaraan'),
           onPressed: () async {
             await Navigator.push(
               context,

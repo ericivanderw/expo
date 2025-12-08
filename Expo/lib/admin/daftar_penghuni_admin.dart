@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/admin/detail_penghuni_admin.dart';
+import 'package:expo/services/localization_service.dart';
 
 class DaftarPenghuniAdminPage extends StatefulWidget {
   const DaftarPenghuniAdminPage({super.key});
@@ -17,13 +18,13 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF1F3F8),
       body: Column(
         children: [
           _buildHeader(),
           Expanded(
             child: Container(
-              decoration: const BoxDecoration(color: Color(0xFFF5F5F5)),
+              decoration: const BoxDecoration(color: Color(0xFFF1F3F8)),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
@@ -34,8 +35,8 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
-                        return const Center(
-                          child: Text('Something went wrong'),
+                        return Center(
+                          child: Text(tr('error_loading_vehicles')),
                         );
                       }
 
@@ -55,7 +56,7 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                       }).toList();
 
                       if (filteredData.isEmpty) {
-                        return const Center(child: Text('No residents found'));
+                        return Center(child: Text(tr('no_residents_found')));
                       }
 
                       return ListView.builder(
@@ -80,7 +81,7 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
   Widget _buildAddButton() {
     return Container(
       padding: const EdgeInsets.all(20),
-      color: Colors.white,
+      color: Color(0xFFFEFEFE),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
@@ -89,7 +90,7 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
             height: 50,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF8C6CCF), Color(0xFF5A3FAE)],
+                colors: [Color(0xFF7A5AF8), Color(0xFF6744D6)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -106,9 +107,9 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              child: const Text(
-                "Tambah Penghuni",
-                style: TextStyle(
+              child: Text(
+                tr('tambah_penghuni'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -145,7 +146,11 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
             30,
           ),
           decoration: const BoxDecoration(
-            color: Color(0xFF7C68BE), // Solid purple color
+            gradient: LinearGradient(
+              colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
@@ -169,15 +174,15 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                       child: const Center(
                         child: Icon(
                           Icons.arrow_back_ios_new,
-                          color: Color(0xFF7C68BE),
+                          color: Color(0xFF7A5AF8),
                           size: 20,
                         ),
                       ),
                     ),
                   ),
-                  const Text(
-                    "Daftar Penghuni",
-                    style: TextStyle(
+                  Text(
+                    tr('daftar_penghuni'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -206,8 +211,8 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                       _searchQuery = value;
                     });
                   },
-                  decoration: const InputDecoration(
-                    hintText: "Search",
+                  decoration: InputDecoration(
+                    hintText: tr('search_resident_placeholder'),
                     border: InputBorder.none,
                     suffixIcon: Icon(Icons.search, color: Colors.black54),
                     contentPadding: EdgeInsets.symmetric(vertical: 14),
@@ -224,8 +229,8 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
   Widget _buildResidentCard(DocumentSnapshot doc) {
     final resident = doc.data() as Map<String, dynamic>;
     resident['id'] = doc.id; // Add ID to map
-    final String name = resident['username'] ?? 'No Name';
-    final String address = resident['alamat'] ?? 'No Address';
+    final String name = resident['username'] ?? tr('no_name');
+    final String address = resident['alamat'] ?? tr('no_address');
     final String userId = doc.id;
 
     return Container(
@@ -243,9 +248,9 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Nama Penghuni",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  Text(
+                    tr('nama_penghuni'),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -261,9 +266,9 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
-                    "Alamat Penghuni",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  Text(
+                    tr('alamat_penghuni'),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -304,7 +309,7 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        "Jumlah Kendaraan : $vehicleCount",
+                        "${tr('jumlah_kendaraan')} : $vehicleCount",
                         style: const TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
@@ -324,9 +329,9 @@ class _DaftarPenghuniAdminPageState extends State<DaftarPenghuniAdminPage> {
                     ),
                   );
                 },
-                child: const Text(
-                  "See Details",
-                  style: TextStyle(
+                child: Text(
+                  tr('lihat_detail'),
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),

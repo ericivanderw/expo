@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:expo/services/localization_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'detail_kendaraan.dart';
 import 'package:get_storage/get_storage.dart';
@@ -168,21 +169,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   }
 
   String _monthName(int m) {
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "Mei",
-      "Jun",
-      "Jul",
-      "Agt",
-      "Sep",
-      "Okt",
-      "Nov",
-      "Des",
-    ];
-    return months[m - 1];
+    return tr('month_$m');
   }
 
   // ─────────────────────────────────────────────
@@ -223,7 +210,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF1F3F8),
       body: Column(
         children: [
           _buildHeader(),
@@ -263,7 +250,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
           Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
-            'Tidak ada data ditemukan',
+            tr('tidak_ada_data'),
             style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
           ),
         ],
@@ -287,7 +274,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
           width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF8C6CCF), Color(0xFF8E9BCB)],
+              colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -303,39 +290,44 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                 horizontalPadding,
                 20,
                 horizontalPadding,
-                30,
+                40,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(height: 20),
+                          const SizedBox(height: 20),
                           Text(
-                            "Riwayat Kendaraan",
-                            style: TextStyle(
+                            tr('riwayat_kendaraan').replaceAll('\n', ' '),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            "Data Kendaraan Keluar-Masuk.",
-                            style: TextStyle(
+                            tr('data_keluar_masuk'),
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 14,
                             ),
                           ),
                         ],
                       ),
+                      Image.asset(
+                        'assets/icon-clock.png',
+                        width: 70,
+                        height: 70,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 50),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
@@ -348,7 +340,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                         setState(() => _searchQuery = value);
                       },
                       decoration: InputDecoration(
-                        hintText: "Search plat/type",
+                        hintText: tr('search_placeholder'),
                         border: InputBorder.none,
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
@@ -401,9 +393,10 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                   SizedBox(
                     width: itemWidth,
                     child: _buildFilterChip(
-                      label: "Status",
+                      label: tr('status'),
                       value: _statusFilter,
                       items: ['Masuk', 'Keluar'],
+                      width: itemWidth,
                       onChanged: (value) {
                         setState(() => _statusFilter = value);
                       },
@@ -413,9 +406,10 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                   SizedBox(
                     width: itemWidth,
                     child: _buildFilterChip(
-                      label: "Jenis",
+                      label: tr('jenis'),
                       value: _jenisFilter,
                       items: ['Motor', 'Mobil'],
+                      width: itemWidth,
                       onChanged: (value) {
                         setState(() => _jenisFilter = value);
                       },
@@ -431,7 +425,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
   }
 
   Widget _buildDateFilter() {
-    String label = "Tanggal";
+    String label = tr('tanggal');
     bool isSelected = _selectedDate != null;
     if (isSelected) {
       final date = _selectedDate!;
@@ -448,13 +442,13 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
             return Theme(
               data: Theme.of(context).copyWith(
                 colorScheme: const ColorScheme.light(
-                  primary: Color(0xFF7C68BE),
+                  primary: Color(0xFF7A5AF8),
                   onPrimary: Colors.white,
                   onSurface: Colors.black,
                 ),
                 textButtonTheme: TextButtonThemeData(
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF7C68BE),
+                    foregroundColor: const Color(0xFF7A5AF8),
                   ),
                 ),
               ),
@@ -484,8 +478,8 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                             DateTime(0),
                           ); // Sentinel for Clear
                         },
-                        child: const Text(
-                          "Hapus Filter",
+                        child: Text(
+                          tr('hapus_filter'),
                           style: TextStyle(color: Colors.red),
                         ),
                       ),
@@ -493,13 +487,13 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                         onPressed: () {
                           Navigator.pop(context); // Cancel (null)
                         },
-                        child: const Text("Batal"),
+                        child: Text(tr('batal')),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context, tempSelectedDate);
                         },
-                        child: const Text("Pilih"),
+                        child: Text(tr('pilih')),
                       ),
                     ],
                   );
@@ -525,10 +519,10 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF7C68BE) : Colors.white,
+          color: isSelected ? const Color(0xFF7A5AF8) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFF7C68BE) : Colors.grey.shade300,
+            color: isSelected ? const Color(0xFF7A5AF8) : Colors.grey.shade300,
           ),
         ),
         child: Row(
@@ -571,19 +565,24 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
     required String label,
     required String value,
     required List<String> items,
+    required double width,
     required Function(String) onChanged,
   }) {
     return PopupMenuButton<String>(
       onSelected: onChanged,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 4,
+      color: Colors.white,
+      constraints: BoxConstraints.tightFor(width: width),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: value.isNotEmpty ? const Color(0xFF7C68BE) : Colors.white,
+          color: value.isNotEmpty ? const Color(0xFF7A5AF8) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: value.isNotEmpty
-                ? const Color(0xFF7C68BE)
+                ? const Color(0xFF7A5AF8)
                 : Colors.grey.shade300,
           ),
         ),
@@ -594,17 +593,14 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
             if (value.isNotEmpty)
               const Icon(Icons.filter_alt, size: 14, color: Colors.white),
             if (value.isNotEmpty) const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                value.isEmpty ? label : value,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: value.isNotEmpty ? Colors.white : Colors.black87,
-                  fontWeight: value.isNotEmpty
-                      ? FontWeight.w600
-                      : FontWeight.normal,
-                ),
-                overflow: TextOverflow.ellipsis,
+            Text(
+              value.isEmpty ? label : tr(value.toLowerCase()),
+              style: TextStyle(
+                fontSize: 12,
+                color: value.isNotEmpty ? Colors.white : Colors.black87,
+                fontWeight: value.isNotEmpty
+                    ? FontWeight.w600
+                    : FontWeight.normal,
               ),
             ),
             const SizedBox(width: 4),
@@ -617,9 +613,21 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
         ),
       ),
       itemBuilder: (context) => [
-        PopupMenuItem<String>(value: '', child: Text('Semua $label')),
+        PopupMenuItem(
+          value: '',
+          child: Text(
+            '${tr('semua')} $label',
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
+          ),
+        ),
         ...items.map(
-          (item) => PopupMenuItem<String>(value: item, child: Text(item)),
+          (item) => PopupMenuItem(
+            value: item,
+            child: Text(
+              tr(item.toLowerCase()),
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+          ),
         ),
       ],
     );
@@ -649,7 +657,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item['type'],
+                    tr(item['type'].toString().toLowerCase()),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -674,7 +682,7 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                   Icon(Icons.check_circle, size: 16, color: statusColor),
                   const SizedBox(width: 4),
                   Text(
-                    statusText,
+                    tr(statusText.toLowerCase()),
                     style: TextStyle(
                       color: statusColor,
                       fontWeight: FontWeight.bold,
@@ -706,8 +714,8 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                     ),
                   );
                 },
-                child: const Text(
-                  "See Details",
+                child: Text(
+                  tr('lihat_detail'),
                   style: TextStyle(
                     color: Colors.black87,
                     fontWeight: FontWeight.bold,

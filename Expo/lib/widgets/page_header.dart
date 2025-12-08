@@ -6,6 +6,8 @@ class PageHeader extends StatelessWidget {
   final Widget? rightIcon;
   final double height;
   final bool showBackButton;
+  final List<Color>? colors;
+  final double? titleTopPadding;
 
   const PageHeader({
     super.key,
@@ -14,6 +16,8 @@ class PageHeader extends StatelessWidget {
     this.rightIcon,
     this.height = 200,
     this.showBackButton = true,
+    this.colors,
+    this.titleTopPadding,
   });
 
   @override
@@ -21,28 +25,33 @@ class PageHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: height,
-      decoration: const BoxDecoration(
-        color: Color(0xFF7C68BE),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: colors ?? [const Color(0xFF795FFC), const Color(0xFF7155FF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
         ),
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    IgnorePointer(
-                      ignoring: !showBackButton,
-                      child: Opacity(
-                        opacity: showBackButton ? 1.0 : 0.0,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 1. Back Button (Left)
+                  if (showBackButton)
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 10.0),
                         child: GestureDetector(
                           onTap: () => Navigator.pop(context),
                           behavior: HitTestBehavior.translucent,
@@ -54,13 +63,13 @@ class PageHeader extends StatelessWidget {
                               width: 40,
                               height: 40,
                               decoration: const BoxDecoration(
-                                color: Colors.white,
+                                color: Color(0xFFFEFEFE),
                                 shape: BoxShape.circle,
                               ),
                               child: const Center(
                                 child: Icon(
                                   Icons.arrow_back_ios_new,
-                                  color: Color(0xFF7C68BE),
+                                  color: Color(0xFF7A5AF8),
                                   size: 20,
                                 ),
                               ),
@@ -69,16 +78,20 @@ class PageHeader extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
+
+                  // 2. Title (Center)
+                  Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: titleTopPadding ?? 0),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             title,
+                            textAlign: TextAlign.center,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFFFEFEFE),
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
@@ -87,6 +100,7 @@ class PageHeader extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               subtitle!,
+                              textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 14,
@@ -96,11 +110,14 @@ class PageHeader extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+
+                  // 3. Right Icon (Right)
+                  if (rightIcon != null)
+                    Align(alignment: Alignment.topRight, child: rightIcon!),
+                ],
               ),
-              if (rightIcon != null) rightIcon!,
-            ],
+            ),
           ),
         ),
       ),

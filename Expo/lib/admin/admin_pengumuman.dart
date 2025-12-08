@@ -5,6 +5,7 @@ import 'package:expo/admin/tambah_pengumuman.dart';
 import 'package:expo/widgets/button.dart';
 import 'package:expo/admin/detail_pengumuman.dart';
 import 'package:intl/intl.dart';
+import 'package:expo/services/localization_service.dart';
 
 class AdminPengumumanPage extends StatefulWidget {
   const AdminPengumumanPage({super.key});
@@ -20,36 +21,52 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
         child: Stack(
           children: [
-            _buildHeader(),
-            Align(
-              alignment: Alignment.topCenter,
-              child: Column(
-                children: [
-                  const SizedBox(height: 100),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 600),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildCalendarSection(),
-                            const SizedBox(height: 20),
-                            _buildAnnouncementsSection(),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
+            // 1. Content Body (White/Grey part with top curves)
+            Column(
+              children: [
+                const SizedBox(height: 140), // Space for header
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F3F8),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(20, 30, 20, 0),
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildCalendarSection(),
+                          const SizedBox(height: 20),
+                          Expanded(child: _buildAnnouncementsSection()),
+                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+
+            // 2. Header Content (Text & Icon)
+            Positioned(top: 0, left: 0, right: 0, child: _buildHeaderContent()),
+
+            // 3. Floating Button
             Positioned(
               bottom: 20,
               left: 20,
@@ -58,7 +75,7 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: CustomButton(
-                    text: 'Tambah Pengumuman',
+                    text: tr('tambah_pengumuman'),
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -77,57 +94,35 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
     );
   }
 
-  Widget _buildHeader() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double screenWidth = constraints.maxWidth;
-        double maxContentWidth = 600;
-        double defaultPadding = 20;
-        double horizontalPadding = (screenWidth - maxContentWidth) / 2;
-
-        if (horizontalPadding < defaultPadding) {
-          horizontalPadding = defaultPadding;
-        }
-
-        return Container(
-          width: double.infinity,
-          height: 200,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF8C6CCF), Color(0xFF8E9BCB)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
-          ),
+  Widget _buildHeaderContent() {
+    return SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
           child: Padding(
-            padding: EdgeInsets.only(
-              top: 20,
-              left: horizontalPadding,
-              right: horizontalPadding,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pengumuman',
-                      style: TextStyle(
+                      tr('pengumuman'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Daftar Pengumuman',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      tr('daftar_pengumuman'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -135,8 +130,8 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -154,22 +149,27 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Kalender',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tr('kalender'),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildCalendarHeader(),
+              const SizedBox(height: 16),
+              _buildCalendarGrid(),
+            ],
           ),
-          const SizedBox(height: 16),
-          _buildCalendarHeader(),
-          const SizedBox(height: 16),
-          _buildCalendarGrid(),
-        ],
+        ),
       ),
     );
   }
@@ -179,7 +179,10 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          DateFormat('MMMM yyyy').format(_focusedDay),
+          DateFormat(
+            'MMMM yyyy',
+            LocalizationService().localeNotifier.value.languageCode,
+          ).format(_focusedDay),
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -241,7 +244,7 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
                   width: 36,
                   child: Center(
                     child: Text(
-                      day,
+                      tr(day),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -412,7 +415,7 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Kegiatan pada ${DateFormat('d MMM yyyy').format(_selectedDay)}',
+              '${tr('kegiatan_pada')} ${DateFormat('d MMM yyyy', LocalizationService().localeNotifier.value.languageCode).format(_selectedDay)}',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -428,9 +431,9 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
                   ),
                 );
               },
-              child: const Text(
-                'See More',
-                style: TextStyle(
+              child: Text(
+                tr('see_more'),
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF7C68BE),
                   fontWeight: FontWeight.w500,
@@ -440,44 +443,52 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
           ],
         ),
         const SizedBox(height: 12),
-        StreamBuilder<QuerySnapshot>(
-          stream: query.snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            }
-
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: Text('Tidak ada pengumuman'),
-                ),
-              );
-            }
-
-            return Column(
-              children: snapshot.data!.docs.map((doc) {
-                var data = doc.data() as Map<String, dynamic>;
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildAnnouncementCard(data),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: query.snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    "${tr('error_loading_announcements')}: ${snapshot.error}",
+                  ),
                 );
-              }).toList(),
-            );
-          },
+              }
+
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(tr('tidak_ada_pengumuman')),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.only(bottom: 100),
+                itemCount: snapshot.data!.docs.length,
+                itemBuilder: (context, index) {
+                  var data =
+                      snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildAnnouncementCard(data),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );
   }
 
   Widget _buildAnnouncementCard(Map<String, dynamic> data) {
-    String title = data['judul'] ?? 'No Title';
+    String title = data['judul'] ?? tr('no_title');
     Timestamp? timestamp = data['tanggal_kegiatan'] as Timestamp?;
     String time = timestamp != null
         ? "${timestamp.toDate().hour.toString().padLeft(2, '0')}:${timestamp.toDate().minute.toString().padLeft(2, '0')}"
@@ -510,10 +521,20 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                'assets/gotongroyong.png',
+                (data['gambar'] != null && data['gambar'].toString().isNotEmpty)
+                    ? data['gambar']
+                    : 'assets/gotongroyong.png',
                 width: 50,
                 height: 50,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(
+                    'assets/gotongroyong.png',
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                  );
+                },
               ),
             ),
             const SizedBox(width: 12),

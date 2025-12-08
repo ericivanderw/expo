@@ -8,11 +8,7 @@ class CustomButton extends StatefulWidget {
   /// - Future<void> Function()
   final Function()? onPressed;
 
-  const CustomButton({
-    super.key,
-    required this.text,
-    required this.onPressed,
-  });
+  const CustomButton({super.key, required this.text, required this.onPressed});
 
   @override
   State<CustomButton> createState() => _CustomButtonState();
@@ -27,7 +23,7 @@ class _CustomButtonState extends State<CustomButton> {
     return LayoutBuilder(
       builder: (context, constraints) {
         double buttonWidth =
-        (constraints.maxWidth.isFinite && constraints.maxWidth > 0)
+            (constraints.maxWidth.isFinite && constraints.maxWidth > 0)
             ? constraints.maxWidth
             : MediaQuery.of(context).size.width * 0.8;
 
@@ -72,57 +68,58 @@ class _CustomButtonState extends State<CustomButton> {
                     end: Alignment.bottomCenter,
                     colors: _pressed
                         ? [
-                      const Color(0xFF6D4FC2),
-                      const Color(0xFF361D77),
-                    ]
+                            const Color(0xFF6744D6), // Darker shade of 7A5AF8
+                            const Color(0xFF5433B8),
+                          ]
                         : [
-                      const Color(0xFF8C6CCF),
-                      const Color(0xFF5A3FAE),
-                    ],
+                            const Color(0xFF7A5AF8), // Main requested color
+                            const Color(0xFF6744D6),
+                          ],
                   ),
                   boxShadow: _pressed
                       ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.35),
-                      offset: const Offset(2, 2),
-                      blurRadius: 6,
-                    ),
-                    BoxShadow(
-                      color: Colors.white.withOpacity(0.25),
-                      offset: const Offset(-2, -2),
-                      blurRadius: 6,
-                    ),
-                  ]
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.35),
+                            offset: const Offset(2, 2),
+                            blurRadius: 6,
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.25),
+                            offset: const Offset(-2, -2),
+                            blurRadius: 6,
+                          ),
+                        ]
                       : [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        offset: const Offset(4, 4),
-                        blurRadius: 8),
-                    BoxShadow(
-                      color: Colors.white.withOpacity(0.2),
-                      offset: const Offset(-4, -4),
-                      blurRadius: 8,
-                    ),
-                  ],
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            offset: const Offset(4, 4),
+                            blurRadius: 8,
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.2),
+                            offset: const Offset(-4, -4),
+                            blurRadius: 8,
+                          ),
+                        ],
                 ),
                 child: Center(
                   child: _loading
                       ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: Colors.white,
-                    ),
-                  )
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Color(0xFFFEFEFE),
+                          ),
+                        )
                       : Text(
-                    widget.text,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
+                          widget.text,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFFFEFEFE),
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
                 ),
               ),
             ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:expo/widgets/button.dart';
+import 'package:expo/services/localization_service.dart';
 
 class TambahKendaraanPage extends StatefulWidget {
   const TambahKendaraanPage({super.key});
@@ -78,21 +79,21 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
     if (_selectedJenis == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Pilih jenis kendaraan")));
+      ).showSnackBar(SnackBar(content: Text(tr('pilih_jenis_kendaraan'))));
       return;
     }
 
     if (_selectedStatus == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Pilih status")));
+      ).showSnackBar(SnackBar(content: Text(tr('pilih_status'))));
       return;
     }
 
     if (_selectedStatus == 'Tamu' && _selectedDate == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Pilih tanggal kedatangan")));
+      ).showSnackBar(SnackBar(content: Text(tr('pilih_tanggal_kedatangan'))));
       return;
     }
 
@@ -103,14 +104,20 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
       final ownerId = storage.read("userId");
 
       if (ownerId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User tidak ditemukan (belum login)")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(tr('user_not_logged_in'))));
         return;
       }
 
+      // Normalize plate: uppercase and remove spaces
+      final normalizedPlate = _platController.text
+          .trim()
+          .toUpperCase()
+          .replaceAll(' ', '');
+
       await FirebaseFirestore.instance.collection("kendaraan_request").add({
-        "plat": _platController.text.trim(),
+        "plat": normalizedPlate,
         "jenis": _selectedJenis, // Dropdown value
         "kategori": _selectedStatus, // Nama Pemilik
         "alamat": _alamatController.text.trim(),
@@ -120,15 +127,15 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
         "createdAt": FieldValue.serverTimestamp(),
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Berhasil mengirim permintaan!")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tr('berhasil_kirim_permintaan'))));
 
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Terjadi kesalahan: $e")));
+      ).showSnackBar(SnackBar(content: Text("${tr('terjadi_kesalahan')}: $e")));
     } finally {
       // setState(() => _loading = false); // Handled by CustomButton
     }
@@ -145,9 +152,12 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Tambah Kendaraan",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        title: Text(
+          tr('tambah_kendaraan'),
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -161,7 +171,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLabel("Nama Pemilik"),
+                    _buildLabel(tr('nama_pemilik')),
                     _buildTextField(
                       controller: _merkController,
                       hint: "Andi",
@@ -169,7 +179,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    _buildLabel("Alamat"),
+                    _buildLabel(tr('alamat')),
                     _buildTextField(
                       controller: _alamatController,
                       hint: "Blok G No.1",
@@ -177,19 +187,19 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    _buildLabel("Jenis Kendaraan"),
+                    _buildLabel(tr('jenis_kendaraan')),
                     _buildDropdown(
                       value: _selectedJenis,
-                      hint: "Pilih Jenis Kendaraan",
+                      hint: tr('pilih_jenis_kendaraan'),
                       items: ["Motor", "Mobil"],
                       onChanged: (val) => setState(() => _selectedJenis = val),
                     ),
                     const SizedBox(height: 16),
 
-                    _buildLabel("Status"),
+                    _buildLabel(tr('status')),
                     _buildDropdown(
                       value: _selectedStatus,
-                      hint: "Pilih kategori (Penghuni/Tamu)",
+                      hint: tr('pilih_kategori'),
                       items: ["Penghuni", "Tamu"],
                       onChanged: (val) => setState(() {
                         _selectedStatus = val;
@@ -199,9 +209,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
                     const SizedBox(height: 16),
 
                     if (_selectedStatus == 'Tamu') ...[
-                      _buildLabel(
-                        "Kedatangan (Maksimal sehari 1*24 jam, Request H-1)",
-                      ),
+                      _buildLabel(tr('tanggal_kedatangan')),
                       GestureDetector(
                         onTap: () => _selectDate(context),
                         child: Container(
@@ -219,7 +227,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
                             children: [
                               Text(
                                 _selectedDate == null
-                                    ? "Select Date"
+                                    ? tr('select_date')
                                     : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
                                 style: TextStyle(
                                   color: _selectedDate == null
@@ -239,7 +247,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
                       const SizedBox(height: 16),
                     ],
 
-                    _buildLabel("Plat Kendaraan"),
+                    _buildLabel(tr('plat_kendaraan')),
                     _buildTextField(
                       controller: _platController,
                       hint: "BP3333ED",
@@ -266,7 +274,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
             child: SafeArea(
               child: SizedBox(
                 width: double.infinity,
-                child: CustomButton(text: "Submit", onPressed: _submit),
+                child: CustomButton(text: tr('submit'), onPressed: _submit),
               ),
             ),
           ),
@@ -312,7 +320,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
             vertical: 14,
           ),
         ),
-        validator: (v) => v == null || v.isEmpty ? "Wajib diisi" : null,
+        validator: (v) => v == null || v.isEmpty ? tr('wajib_diisi') : null,
       ),
     );
   }
@@ -337,7 +345,10 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
           isExpanded: true,
           icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
           items: items.map((String item) {
-            return DropdownMenuItem<String>(value: item, child: Text(item));
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(tr(item.toLowerCase())),
+            );
           }).toList(),
           onChanged: onChanged,
         ),

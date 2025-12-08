@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:expo/widgets/page_header.dart';
 import 'package:expo/widgets/button.dart';
+import 'package:expo/services/localization_service.dart';
 
 class TambahPenghuniAdminPage extends StatefulWidget {
   const TambahPenghuniAdminPage({super.key});
@@ -15,23 +16,20 @@ class _TambahPenghuniAdminPageState extends State<TambahPenghuniAdminPage> {
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
-  final TextEditingController _idController = TextEditingController(
-    text: "088",
-  );
-  final TextEditingController _namaController = TextEditingController(
-    text: "Andi",
-  );
+  // Controllers
   final TextEditingController _usernameController = TextEditingController(
-    text: "Andi",
+    text: "",
   );
   final TextEditingController _passwordController = TextEditingController(
-    text: "Andi123",
+    text: "",
   );
+  final TextEditingController _confirmPasswordController =
+      TextEditingController(text: "");
   final TextEditingController _alamatController = TextEditingController(
-    text: "Blok G No.1",
+    text: "",
   );
   final TextEditingController _phoneController = TextEditingController(
-    text: "0888999998888",
+    text: "",
   );
 
   bool _isLoading = false;
@@ -43,30 +41,21 @@ class _TambahPenghuniAdminPageState extends State<TambahPenghuniAdminPage> {
       });
 
       try {
-        final String id = _idController.text.trim();
         final String username = _usernameController.text.trim();
 
-        // Check if ID or Username already exists
-        final idCheck = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(id)
-            .get();
+        // Check if Username already exists
         final usernameCheck = await FirebaseFirestore.instance
             .collection('users')
             .where('username', isEqualTo: username)
             .get();
 
-        if (idCheck.exists) {
-          throw 'ID Penghuni sudah digunakan';
-        }
-
         if (usernameCheck.docs.isNotEmpty) {
-          throw 'Username sudah digunakan';
+          throw tr('username_sudah_digunakan');
         }
 
-        // Create user document
-        await FirebaseFirestore.instance.collection('users').doc(id).set({
-          'nama': _namaController.text.trim(),
+        // Create user document with auto-generated ID
+        await FirebaseFirestore.instance.collection('users').add({
+          'nama': username, // Use username as name for compatibility
           'username': username,
           'password': _passwordController.text.trim(),
           'alamat': _alamatController.text.trim(),
@@ -77,15 +66,15 @@ class _TambahPenghuniAdminPageState extends State<TambahPenghuniAdminPage> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Penghuni berhasil ditambahkan')),
+            SnackBar(content: Text(tr('penghuni_berhasil_ditambahkan'))),
           );
           Navigator.pop(context);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("${tr('terjadi_kesalahan')}: $e")),
+          );
         }
       } finally {
         if (mounted) {
@@ -103,7 +92,7 @@ class _TambahPenghuniAdminPageState extends State<TambahPenghuniAdminPage> {
       backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
         children: [
-          const PageHeader(title: "Tambah Penghuni", showBackButton: false),
+          PageHeader(title: tr('tambah_penghuni'), showBackButton: false),
           SafeArea(
             child: Center(
               child: ConstrainedBox(
@@ -131,28 +120,46 @@ class _TambahPenghuniAdminPageState extends State<TambahPenghuniAdminPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel("ID Penghuni"),
-                                _buildTextField(_idController),
+                                _buildLabel(tr('username')),
+                                _buildTextField(
+                                  _usernameController,
+                                  hintText: tr('hint_username'),
+                                ),
                                 const SizedBox(height: 16),
-                                _buildLabel("Nama Penghuni"),
-                                _buildTextField(_namaController),
-                                const SizedBox(height: 16),
-                                _buildLabel("Username"),
-                                _buildTextField(_usernameController),
-                                const SizedBox(height: 16),
-                                _buildLabel("Password"),
+                                _buildLabel(tr('password')),
                                 _buildTextField(
                                   _passwordController,
                                   isPassword: true,
+                                  hintText: tr('hint_password'),
                                 ),
                                 const SizedBox(height: 16),
-                                _buildLabel("Alamat"),
-                                _buildTextField(_alamatController),
+                                _buildLabel(tr('konfirmasi_password')),
+                                _buildTextField(
+                                  _confirmPasswordController,
+                                  isPassword: true,
+                                  hintText: tr('hint_konfirmasi_password'),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return tr('field_tidak_boleh_kosong');
+                                    }
+                                    if (value != _passwordController.text) {
+                                      return tr('password_tidak_sama');
+                                    }
+                                    return null;
+                                  },
+                                ),
                                 const SizedBox(height: 16),
-                                _buildLabel("Nomor Handphone"),
+                                _buildLabel(tr('alamat')),
+                                _buildTextField(
+                                  _alamatController,
+                                  hintText: tr('hint_alamat'),
+                                ),
+                                const SizedBox(height: 16),
+                                _buildLabel(tr('nomor_handphone')),
                                 _buildTextField(
                                   _phoneController,
                                   isNumber: true,
+                                  hintText: tr('hint_nomor_handphone'),
                                 ),
                               ],
                             ),
@@ -174,7 +181,7 @@ class _TambahPenghuniAdminPageState extends State<TambahPenghuniAdminPage> {
                         child: SizedBox(
                           width: double.infinity,
                           child: CustomButton(
-                            text: _isLoading ? "Loading..." : "Submit",
+                            text: _isLoading ? tr('loading') : tr('submit'),
                             onPressed: _isLoading ? () {} : _submit,
                           ),
                         ),
@@ -235,6 +242,8 @@ class _TambahPenghuniAdminPageState extends State<TambahPenghuniAdminPage> {
     TextEditingController controller, {
     bool isPassword = false,
     bool isNumber = false,
+    String? hintText,
+    String? Function(String?)? validator,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -246,16 +255,23 @@ class _TambahPenghuniAdminPageState extends State<TambahPenghuniAdminPage> {
         controller: controller,
         obscureText: isPassword,
         keyboardType: isNumber ? TextInputType.phone : TextInputType.text,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Field ini tidak boleh kosong';
-          }
-          return null;
-        },
+        validator:
+            validator ??
+            (value) {
+              if (value == null || value.isEmpty) {
+                return tr('field_tidak_boleh_kosong');
+              }
+              return null;
+            },
       ),
     );
   }

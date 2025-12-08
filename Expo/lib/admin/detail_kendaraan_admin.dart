@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:expo/widgets/appbarback.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:expo/services/localization_service.dart';
 
 class DetailKendaraanAdminPage extends StatefulWidget {
   final Map<String, dynamic> vehicle;
@@ -115,6 +116,7 @@ class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
             if (d['createdAt'] is Timestamp) {
               _registeredDate = DateFormat(
                 'd MMM yyyy, HH:mm',
+                LocalizationService().localeNotifier.value.languageCode,
               ).format((d['createdAt'] as Timestamp).toDate());
             } else {
               _registeredDate = d['createdAt'].toString();
@@ -165,7 +167,14 @@ class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: const AppBarBack(title: 'Details'),
+      appBar: AppBarBack(
+        title: tr('detail_kendaraan'),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
@@ -193,8 +202,8 @@ class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Status Log',
+                        Text(
+                          tr('status'),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -262,14 +271,17 @@ class _DetailKendaraanAdminPageState extends State<DetailKendaraanAdminPage> {
                                 ),
                               const SizedBox(height: 16),
 
-                              _buildDetailBox('Nama Pemilik', _ownerName),
+                              _buildDetailBox(tr('nama_pemilik'), _ownerName),
                               const SizedBox(height: 12),
-                              _buildDetailBox('Plat Kendaraan', _plate),
-                              const SizedBox(height: 12),
-                              _buildDetailBox('Jenis Kendaraan', _vehicleType),
+                              _buildDetailBox(tr('plat_kendaraan'), _plate),
                               const SizedBox(height: 12),
                               _buildDetailBox(
-                                'Waktu Log (Masuk/Keluar)',
+                                tr('jenis_kendaraan'),
+                                tr(_vehicleType.toLowerCase()),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildDetailBox(
+                                tr('tanggal_waktu'),
                                 widget.vehicle['date'] ?? '-',
                               ),
                             ],

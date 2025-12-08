@@ -1,9 +1,15 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:expo/widgets/button.dart';
+import 'package:expo/services/localization_service.dart';
 
 class TambahPengumumanPage extends StatefulWidget {
-  const TambahPengumumanPage({super.key});
+  final Map<String, dynamic>? data;
+  final String? docId;
+
+  const TambahPengumumanPage({super.key, this.data, this.docId});
 
   @override
   State<TambahPengumumanPage> createState() => _TambahPengumumanPageState();
@@ -17,11 +23,70 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
   TimeOfDay? _selectedTime;
   bool _isLoading = false;
 
+  List<String> _assetImages = [];
+  String? _selectedImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAssetImages();
+
+    if (widget.data != null) {
+      _titleController.text = widget.data!['judul'] ?? '';
+      _descriptionController.text = widget.data!['deskripsi'] ?? '';
+      _selectedImage = widget.data!['gambar'];
+
+      if (widget.data!['tanggal_kegiatan'] != null) {
+        Timestamp timestamp = widget.data!['tanggal_kegiatan'];
+        _selectedDate = timestamp.toDate();
+      }
+
+      if (widget.data!['jam_kegiatan'] != null) {
+        String timeStr = widget.data!['jam_kegiatan'];
+        List<String> parts = timeStr.split(':');
+        if (parts.length == 2) {
+          _selectedTime = TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _loadAssetImages() async {
+    try {
+      final manifestContent = await rootBundle.loadString('AssetManifest.json');
+      final Map<String, dynamic> manifestMap = json.decode(manifestContent);
+
+      final imagePaths = manifestMap.keys
+          .where((String key) => key.contains('assets/img/pengumuman/'))
+          .toList();
+
+      setState(() {
+        _assetImages = imagePaths;
+      });
+    } catch (e) {
+      print("Error loading assets: $e");
+    }
+  }
+
   Future<void> _selectDate() async {
+    final now = DateTime.now();
+    // Allow only H+1 (tomorrow) onwards
+    final tomorrow = now.add(const Duration(days: 1));
+    final firstDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
+
+    // Ensure initialDate is valid (must be >= firstDate)
+    DateTime initialDate = _selectedDate ?? firstDate;
+    if (initialDate.isBefore(firstDate)) {
+      initialDate = firstDate;
+    }
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
+      initialDate: initialDate,
+      firstDate: firstDate,
       lastDate: DateTime(2030),
     );
 
@@ -82,9 +147,11 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
                             ),
                           ),
                         ),
-                        const Text(
-                          'Pengumuman',
-                          style: TextStyle(
+                        Text(
+                          widget.data != null
+                              ? tr('edit_pengumuman')
+                              : tr('pengumuman'),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
@@ -122,14 +189,14 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildInputField(
-                              'Judul Kegiatan',
-                              'Gotong Royong',
+                              tr('judul_kegiatan'),
+                              tr('hint_judul'),
                               _titleController,
                             ),
                             const SizedBox(height: 20),
                             _buildInputField(
-                              'Deskripsi',
-                              'Deskripsikan kegiatan...',
+                              tr('deskripsi'),
+                              tr('hint_deskripsi'),
                               _descriptionController,
                               maxLines: 4,
                             ),
@@ -141,6 +208,8 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
                                 Expanded(child: _buildTimeField()),
                               ],
                             ),
+                            const SizedBox(height: 20),
+                            _buildImageSelector(),
                           ],
                         ),
                       ),
@@ -176,15 +245,17 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: CustomButton(
-          text: _isLoading ? 'Loading...' : 'Submit',
+          text: _isLoading
+              ? tr('memuat')
+              : (widget.data != null ? tr('simpan') : tr('submit')),
           onPressed: _isLoading
               ? () {}
               : () async {
                   if (_formKey.currentState!.validate()) {
                     if (_selectedDate == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please select a date'),
+                        SnackBar(
+                          content: Text(tr('pilih_tanggal_valid')),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -193,8 +264,26 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
 
                     if (_selectedTime == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please select a time'),
+                        SnackBar(
+                          content: Text(tr('pilih_jam_valid')),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    final DateTime dateTime = DateTime(
+                      _selectedDate!.year,
+                      _selectedDate!.month,
+                      _selectedDate!.day,
+                      _selectedTime!.hour,
+                      _selectedTime!.minute,
+                    );
+
+                    if (dateTime.isBefore(DateTime.now())) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(tr('waktu_kegiatan_berlalu')),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -206,30 +295,39 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
                     });
 
                     try {
-                      // Combine date and time
-                      final DateTime dateTime = DateTime(
-                        _selectedDate!.year,
-                        _selectedDate!.month,
-                        _selectedDate!.day,
-                        _selectedTime!.hour,
-                        _selectedTime!.minute,
-                      );
+                      final Map<String, dynamic> announcementData = {
+                        'judul': _titleController.text,
+                        'deskripsi': _descriptionController.text,
+                        'tanggal_kegiatan': Timestamp.fromDate(dateTime),
+                        'jam_kegiatan':
+                            '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}',
+                        'gambar': _selectedImage ?? '',
+                        'updatedAt': FieldValue.serverTimestamp(),
+                      };
 
-                      await FirebaseFirestore.instance
-                          .collection('pengumuman')
-                          .add({
-                            'judul': _titleController.text,
-                            'deskripsi': _descriptionController.text,
-                            'tanggal_kegiatan': Timestamp.fromDate(dateTime),
-                            'jam_kegiatan':
-                                '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}',
-                            'createdAt': FieldValue.serverTimestamp(),
-                          });
+                      if (widget.docId != null) {
+                        // Update existing document
+                        await FirebaseFirestore.instance
+                            .collection('pengumuman')
+                            .doc(widget.docId)
+                            .update(announcementData);
+                      } else {
+                        // Add new document
+                        announcementData['createdAt'] =
+                            FieldValue.serverTimestamp();
+                        await FirebaseFirestore.instance
+                            .collection('pengumuman')
+                            .add(announcementData);
+                      }
 
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Pengumuman berhasil ditambahkan'),
+                          SnackBar(
+                            content: Text(
+                              widget.docId != null
+                                  ? tr('pengumuman_diperbarui')
+                                  : tr('pengumuman_ditambahkan'),
+                            ),
                             backgroundColor: Colors.green,
                           ),
                         );
@@ -239,7 +337,7 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Error: $e'),
+                            content: Text("${tr('terjadi_kesalahan')}: $e"),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -310,9 +408,9 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Tanggal Kegiatan',
-          style: TextStyle(
+        Text(
+          tr('tanggal_kegiatan'),
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: Colors.black87,
@@ -334,7 +432,7 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
                 Text(
                   _selectedDate != null
                       ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                      : 'Select Date',
+                      : tr('pilih_tanggal'),
                   style: TextStyle(
                     color: _selectedDate != null
                         ? Colors.black87
@@ -359,9 +457,9 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Jam Kegiatan',
-          style: TextStyle(
+        Text(
+          tr('jam_kegiatan'),
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: Colors.black87,
@@ -383,7 +481,7 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
                 Text(
                   _selectedTime != null
                       ? '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
-                      : 'Select Time',
+                      : tr('pilih_jam'),
                   style: TextStyle(
                     color: _selectedTime != null
                         ? Colors.black87
@@ -405,5 +503,84 @@ class _TambahPengumumanPageState extends State<TambahPengumumanPage> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Widget _buildImageSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          tr('pilih_gambar'),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (_assetImages.isEmpty)
+          Text(
+            tr('no_images_found'),
+            style: TextStyle(color: Colors.grey.shade500),
+          )
+        else
+          SizedBox(
+            height: 100,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Row(
+                children: _assetImages.map((imagePath) {
+                  final isSelected = _selectedImage == imagePath;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedImage = isSelected ? null : imagePath;
+                        });
+                      },
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF7A5AF8)
+                                : Colors.grey.shade300,
+                            width: isSelected ? 3 : 1,
+                          ),
+                          image: DecorationImage(
+                            image: AssetImage(imagePath),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        child: isSelected
+                            ? Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF7A5AF8,
+                                  ).withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.check_circle,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }

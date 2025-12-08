@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expo/services/localization_service.dart';
+import 'package:intl/intl.dart';
+import 'package:expo/widgets/appbarback.dart';
 
 class DetailKendaraanViewPage extends StatefulWidget {
   final String vehicleId;
@@ -34,7 +37,7 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
           .get();
 
       if (!verifiedDoc.exists) {
-        throw Exception('Vehicle not found');
+        throw Exception(tr('vehicle_not_found'));
       }
 
       // Use verified doc data
@@ -43,6 +46,33 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
       vehicleData['status'] = 'Verified';
 
       return _fetchUserData(vehicleData);
+    }
+
+    if (vehicleDoc.exists) {
+      final data = vehicleDoc.data() as Map<String, dynamic>;
+      // Check for auto-deletion if Tamu
+      if (data['kategori'] == 'Tamu' && data['createdAt'] != null) {
+        final createdAt = (data['createdAt'] as Timestamp).toDate();
+        final now = DateTime.now();
+        final difference = now.difference(createdAt);
+
+        if (difference.inHours >= 24) {
+          // Auto delete
+          await FirebaseFirestore.instance
+              .collection('kendaraan_request')
+              .doc(widget.vehicleId)
+              .delete();
+
+          if (mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(tr('guest_data_expired'))));
+          }
+          throw Exception(tr('vehicle_expired'));
+        }
+      }
+      return _fetchUserData(data);
     }
 
     return _fetchUserData(vehicleDoc.data() as Map<String, dynamic>);
@@ -71,22 +101,13 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        backgroundColor: Colors.grey.shade100,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
+      appBar: AppBarBack(
+        title: tr('detail_kendaraan'),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        title: const Text(
-          'Detail Kendaraan',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _dataFuture,
@@ -100,7 +121,7 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
           }
 
           if (!snapshot.hasData) {
-            return const Center(child: Text('Data tidak ditemukan'));
+            return Center(child: Text(tr('tidak_ada_data')));
           }
 
           final vehicleData = snapshot.data!['vehicle'];
@@ -122,7 +143,9 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
           final fotoUrl =
               vehicleData['foto_kendaraan'] ?? vehicleData['stnkUrl'];
           final kedatangan = vehicleData['createdAt'] != null
-              ? (vehicleData['createdAt'] as Timestamp).toDate().toString()
+              ? DateFormat(
+                  'dd MMM yyyy, HH:mm',
+                ).format((vehicleData['createdAt'] as Timestamp).toDate())
               : null;
 
           return Align(
@@ -134,21 +157,51 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailCard('Nama Pemilik', namaPemilik),
-                    const SizedBox(height: 12),
-                    _buildDetailCard('Jenis Kendaraan', jenisKendaraan),
-                    const SizedBox(height: 12),
-                    _buildDetailCard('Status', status),
-                    const SizedBox(height: 12),
-                    if (status == 'Tamu' && kedatangan != null) ...[
-                      _buildDetailCard('Kedatangan', kedatangan),
-                      const SizedBox(height: 12),
-                    ],
-                    _buildDetailCard('Plat Kendaraan', platKendaraan),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildDetailItem(tr('nama_pemilik'), namaPemilik),
+                          const SizedBox(height: 12),
+                          _buildDetailItem(
+                            tr('jenis_kendaraan'),
+                            jenisKendaraan,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildDetailItem(
+                            tr('status'),
+                            tr(status.toLowerCase()),
+                          ),
+                          const SizedBox(height: 12),
+                          if (vehicleData['kategori'] == 'Tamu') ...[
+                            _buildDetailItem(tr('kategori'), tr('tamu')),
+                            const SizedBox(height: 12),
+                            if (kedatangan != null) ...[
+                              _buildDetailItem(tr('kedatangan'), kedatangan),
+                              const SizedBox(height: 12),
+                            ],
+                          ],
+                          _buildDetailItem(tr('plat_kendaraan'), platKendaraan),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     if (fotoUrl != null && fotoUrl.isNotEmpty) ...[
-                      const Text(
-                        'Foto Kendaraan',
+                      Text(
+                        tr('foto_kendaraan'),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.black87,
@@ -179,13 +232,14 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
     );
   }
 
-  Widget _buildDetailCard(String label, String value) {
+  Widget _buildDetailItem(String label, String value) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,7 +258,7 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
             style: const TextStyle(
               fontSize: 14,
               color: Colors.black87,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

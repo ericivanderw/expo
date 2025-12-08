@@ -6,6 +6,8 @@ import 'package:expo/admin/riwayat_kendaraan_admin.dart';
 
 import 'package:expo/admin/profil_admin.dart';
 import 'package:expo/admin/detail_pengumuman.dart';
+import 'package:expo/services/localization_service.dart';
+import 'package:intl/intl.dart';
 
 class AdminHomePage extends StatefulWidget {
   final int initialIndex;
@@ -48,7 +50,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF1F3F8),
       bottomNavigationBar: AdminBottomNavBar(
         currentIndex: _currentIndex,
         onTap: _onItemTapped,
@@ -68,26 +70,24 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _buildHomeContent() {
-    return SafeArea(
-      child: Stack(
-        children: [
-          _buildHeader(),
-          Align(
-            alignment: Alignment.topCenter,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 110),
-                  _buildMenuUtama(context),
-                  const SizedBox(height: 10),
-                  _buildPengumuman(context),
-                  const SizedBox(height: 80),
-                ],
-              ),
+    return Stack(
+      children: [
+        _buildHeader(),
+        Align(
+          alignment: Alignment.topCenter,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 110),
+                _buildMenuUtama(context),
+                const SizedBox(height: 10),
+                _buildPengumuman(context),
+                const SizedBox(height: 80),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -108,7 +108,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           height: 200,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF8C6CCF), Color(0xFF8E9BCB)],
+              colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -130,22 +130,25 @@ class _AdminHomePageState extends State<AdminHomePage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Halo, Admin!",
-                          style: TextStyle(
-                            color: Colors.white,
+                          "${tr('halo')}, ${tr('admin')}!",
+                          style: const TextStyle(
+                            color: Color(0xFFFEFEFE),
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         SizedBox(height: 4),
                         Text(
-                          "Selamat Datang di Entrify",
-                          style: TextStyle(color: Colors.white, fontSize: 14),
+                          tr('selamat_datang'),
+                          style: const TextStyle(
+                            color: Color(0xFFFEFEFE),
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -176,7 +179,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           margin: const EdgeInsets.fromLTRB(16, 30, 16, 0),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFEFEFE),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -189,11 +192,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 16),
                 child: Text(
-                  "Menu Utama",
-                  style: TextStyle(
+                  tr('menu_utama'),
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
@@ -205,14 +208,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 children: [
                   _menuItem(
                     icon: Icons.people,
-                    title: "Kelola\nPenghuni",
+                    title: tr('kelola_penghuni'),
                     onTap: () {
                       Navigator.pushNamed(context, '/admin/daftar_penghuni');
                     },
                   ),
                   _menuItem(
                     icon: Icons.directions_car,
-                    title: "Kelola\nKendaraan",
+                    title: tr('kelola_kendaraan'),
                     onTap: () {
                       Navigator.pushNamed(context, '/admin/daftar_kendaraan');
                     },
@@ -263,7 +266,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFEFEFE),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -279,17 +282,20 @@ class _AdminHomePageState extends State<AdminHomePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    "Pengumuman",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    tr('pengumuman'),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   GestureDetector(
                     onTap: () {
                       _onItemTapped(1); // Switch to Pengumuman tab
                     },
-                    child: const Text(
-                      "See More",
-                      style: TextStyle(
+                    child: Text(
+                      tr('see_more'),
+                      style: const TextStyle(
                         fontSize: 14,
                         color: Colors.blueGrey,
                         fontWeight: FontWeight.bold,
@@ -300,9 +306,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
-                "Informasi Pengumuman Bulan Ini",
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+              Text(
+                tr('info_pengumuman'),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
               const SizedBox(height: 16),
               StreamBuilder<QuerySnapshot>(
@@ -317,7 +323,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
-                    return const Center(child: Text('Something went wrong'));
+                    return Center(
+                      child: Text(tr('error_loading_announcements')),
+                    );
                   }
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -325,7 +333,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   }
 
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text('Tidak ada pengumuman'));
+                    return Center(child: Text(tr('tidak_ada_pengumuman')));
                   }
 
                   return Column(
@@ -344,10 +352,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _pengumumanItem(Map<String, dynamic> data) {
-    String title = data['judul'] ?? 'No Title';
+    String title = data['judul'] ?? tr('no_title');
     Timestamp? timestamp = data['tanggal_kegiatan'] as Timestamp?;
     String dateStr = timestamp != null
-        ? "${timestamp.toDate().day}/${timestamp.toDate().month}/${timestamp.toDate().year}"
+        ? DateFormat(
+            'd/M/yyyy',
+            LocalizationService().localeNotifier.value.languageCode,
+          ).format(timestamp.toDate())
         : "-";
 
     return Padding(
@@ -363,15 +374,23 @@ class _AdminHomePageState extends State<AdminHomePage> {
         },
         child: Row(
           children: [
-            Container(
-              width: 55,
-              height: 55,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                image: const DecorationImage(
-                  image: AssetImage("assets/gotongroyong.png"),
-                  fit: BoxFit.cover,
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                (data['gambar'] != null && data['gambar'].toString().isNotEmpty)
+                    ? data['gambar']
+                    : 'assets/gotongroyong.png',
+                width: 55,
+                height: 55,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(
+                    'assets/gotongroyong.png',
+                    width: 55,
+                    height: 55,
+                    fit: BoxFit.cover,
+                  );
+                },
               ),
             ),
             const SizedBox(width: 12),
