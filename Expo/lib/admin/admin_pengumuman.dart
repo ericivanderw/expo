@@ -137,7 +137,7 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
 
   Widget _buildCalendarSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -151,7 +151,7 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
       ),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(maxWidth: 340),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -199,6 +199,7 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
                     _focusedDay.year,
                     _focusedDay.month - 1,
                   );
+                  _selectedDay = _focusedDay;
                 });
               },
             ),
@@ -210,6 +211,7 @@ class _AdminPengumumanPageState extends State<AdminPengumumanPage> {
                     _focusedDay.year,
                     _focusedDay.month + 1,
                   );
+                  _selectedDay = _focusedDay;
                 });
               },
             ),

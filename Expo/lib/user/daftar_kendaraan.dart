@@ -58,6 +58,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
           'arrivalDate': d['createdAt'] != null
               ? (d['createdAt'] as Timestamp).toDate().toString()
               : '-',
+          'kategori': d['kategori'] ?? 'Penghuni', // Added category
         };
       }).toList();
 
@@ -138,6 +139,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
           'arrivalDate': d['rejectedAt'] != null
               ? (d['rejectedAt'] as Timestamp).toDate().toString()
               : '-',
+          'kategori': d['kategori'] ?? '',
         };
       }).toList();
 
@@ -189,6 +191,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                 right: 0,
                 child: PageHeader(
                   title: tr('kendaraanku'),
+                  titleTopPadding: 16,
                   showBackButton: true,
                   rightIcon: Image.asset(
                     'assets/icon-list.png',
@@ -311,6 +314,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -410,6 +414,13 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
   }
 
   Widget _buildVehicleCard(Map<String, dynamic> vehicle) {
+    String displayStatus = tr(vehicle['status'].toString().toLowerCase());
+    if (vehicle['status'] == 'Verified' &&
+        vehicle['kategori'] != null &&
+        vehicle['kategori'].toString().isNotEmpty) {
+      displayStatus = tr(vehicle['kategori'].toString().toLowerCase());
+    }
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -476,7 +487,7 @@ class _DaftarKendaraanPageState extends State<DaftarKendaraanPage> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        tr(vehicle['status'].toString().toLowerCase()),
+                        displayStatus,
                         style: TextStyle(
                           fontSize: 14,
                           color: vehicle['statusColor'],

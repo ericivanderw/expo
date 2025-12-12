@@ -149,7 +149,7 @@ class _DetailKendaraanViewPageState extends State<DetailKendaraanViewPage> {
               : null;
 
           return Align(
-            alignment: Alignment.topCenter,
+            alignment: Alignment.center,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 600),
               child: SingleChildScrollView(

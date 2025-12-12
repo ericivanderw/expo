@@ -166,6 +166,7 @@ class DetailPengumuman extends StatelessWidget {
                                   const SizedBox(height: 8),
                                   Text(
                                     description,
+                                    textAlign: TextAlign.justify,
                                     style: const TextStyle(
                                       fontSize: 14,
                                       color: Colors.black87,

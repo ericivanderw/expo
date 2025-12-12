@@ -303,6 +303,7 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
     bool readOnly = false,
   }) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: readOnly ? Colors.grey.shade200 : const Color(0xFFF0F0F0),
         borderRadius: BorderRadius.circular(12),
@@ -332,7 +333,14 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
     required Function(String?) onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(
+        horizontal: 4,
+      ), // Reduced width slightly
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 12,
+      ), // Increased vertical padding
       decoration: BoxDecoration(
         color: const Color(0xFFF0F0F0),
         borderRadius: BorderRadius.circular(12),
@@ -341,8 +349,15 @@ class _TambahKendaraanPageState extends State<TambahKendaraanPage> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(hint, style: TextStyle(color: Colors.grey.shade600)),
+          hint: Text(hint, style: TextStyle(color: Colors.grey.shade500)),
           isExpanded: true,
+          isDense: true, // Fixes white box artifact
+          underline:
+              const SizedBox(), // Explicitly remove underline to fix white box
+          alignment: AlignmentDirectional
+              .centerStart, // Ensure text aligns with padding
+          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(12),
           icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
           items: items.map((String item) {
             return DropdownMenuItem<String>(

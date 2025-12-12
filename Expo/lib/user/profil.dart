@@ -163,7 +163,7 @@ class _ProfilPageState extends State<ProfilPage> {
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 600),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
+                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,14 +594,9 @@ class _ProfilPageState extends State<ProfilPage> {
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  content,
-                  textAlign: TextAlign.justify,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                    height: 1.5,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: _buildFormattedContent(content),
                 ),
               ),
             ),
@@ -785,5 +780,83 @@ class _ProfilPageState extends State<ProfilPage> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildFormattedContent(String content) {
+    List<Widget> widgets = [];
+    List<String> lines = content.split('\n');
+    final RegExp numberedListRegex = RegExp(r'^(\d+\.)\s+(.*)');
+
+    for (String line in lines) {
+      if (line.trim().isEmpty) {
+        widgets.add(const SizedBox(height: 8));
+        continue;
+      }
+
+      final match = numberedListRegex.firstMatch(line.trim());
+      if (match != null) {
+        // It's a numbered list item
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 24, // Fixed width for number
+                  child: Text(
+                    match.group(1)!,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black87,
+                      height: 1.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    match.group(2)!,
+                    textAlign: TextAlign.justify,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        // Regular text
+        bool isHeader =
+            line.endsWith(':') ||
+            line.contains('Visi:') ||
+            line.contains('Misi:') ||
+            line.contains('Vision:') ||
+            line.contains('Mission:') ||
+            line.contains('愿景：') ||
+            line.contains('使命：');
+
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              line,
+              textAlign: isHeader ? TextAlign.left : TextAlign.justify,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+                height: 1.5,
+                fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+    return widgets;
   }
 }

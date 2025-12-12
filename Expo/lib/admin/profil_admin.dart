@@ -14,6 +14,8 @@ class ProfilAdminPage extends StatefulWidget {
 
 class _ProfilAdminPageState extends State<ProfilAdminPage> {
   String _userName = "";
+  int _totalUsers = 0;
+  int _totalVehicles = 0;
 
   @override
   void initState() {
@@ -39,9 +41,24 @@ class _ProfilAdminPageState extends State<ProfilAdminPage> {
         name = data?['nama'] ?? data?['username'] ?? "Admin";
       }
 
+      // 2. Fetch Total Users
+      final usersSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'user')
+          .get();
+      int totalUsers = usersSnap.docs.length;
+
+      // 3. Fetch Total Vehicles
+      final vehiclesSnap = await FirebaseFirestore.instance
+          .collection('plat_terdaftar')
+          .get();
+      int totalVehicles = vehiclesSnap.docs.length;
+
       if (mounted) {
         setState(() {
           _userName = name;
+          _totalUsers = totalUsers;
+          _totalVehicles = totalVehicles;
         });
       }
     } catch (e) {
@@ -91,7 +108,9 @@ class _ProfilAdminPageState extends State<ProfilAdminPage> {
                               ), // Increased space for avatar
                               _buildProfileInfo(),
                               const SizedBox(height: 20),
-                              // Stats section removed as requested
+                              // Stats section (Dashboard)
+                              _buildStatsSection(),
+                              const SizedBox(height: 20),
                               _buildContactSection(),
                               const SizedBox(height: 20),
                               _buildSettingsSection(context),
@@ -185,6 +204,107 @@ class _ProfilAdminPageState extends State<ProfilAdminPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatsSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr('ringkasan'),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8E8E8), // Same as user profile
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/admin/daftar_penghuni',
+                      ).then((_) => _fetchUserData());
+                    },
+                    child: _buildStatCard(
+                      tr('total_user'),
+                      _totalUsers.toString(),
+                      Colors.blue,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/admin/daftar_kendaraan',
+                      ).then((_) => _fetchUserData());
+                    },
+                    child: _buildStatCard(
+                      tr('jumlah_kendaraan'),
+                      _totalVehicles.toString(),
+                      Colors.green,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String count, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDCDCDC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.circle, size: 10, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            count,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

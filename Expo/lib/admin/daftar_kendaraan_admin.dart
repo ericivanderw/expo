@@ -39,37 +39,6 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
           .orderBy('createdAt', descending: true)
           .get();
 
-      final verifiedVehicles = verifiedSnap.docs.map((doc) {
-        final d = doc.data();
-        return {
-          'id': doc.id,
-          'plate': d['plat'] ?? '',
-          'owner': d['merk'] ?? tr('unknown'), // merk stores owner name
-          'vehicleName': '',
-          'color': "N/A",
-          'type': d['jenis'] ?? '',
-          'status': 'Approved',
-          'date': d['createdAt'] != null
-              ? (d['createdAt'] as Timestamp).toDate()
-              : null,
-          'kategori': d['kategori'] ?? '',
-          'keterangan': d['kategori'] ?? '',
-          'foto': d['fotoUrl'] ?? 'assets/car.png',
-          'ownerId': d['ownerId'] ?? '',
-          'submittedDate': d['createdAt'] != null
-              ? (d['createdAt'] as Timestamp).toDate().toString()
-              : '',
-          'createdAt': d['createdAt'] != null
-              ? DateFormat(
-                  'd MMM yyyy, HH:mm',
-                  LocalizationService().localeNotifier.value.languageCode,
-                ).format((d['createdAt'] as Timestamp).toDate())
-              : '-',
-        };
-      }).toList();
-
-      allVehicles.addAll(verifiedVehicles);
-
       // 2. Fetch Requests from 'kendaraan_request'
       final requestSnap = await FirebaseFirestore.instance
           .collection('kendaraan_request')
@@ -82,7 +51,7 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
           .orderBy('rejectedAt', descending: true)
           .get();
 
-      // Collect all owner IDs from requests and rejected
+      // Collect all owner IDs from requests, rejected AND verified
       final Set<String> ownerIds = {};
 
       for (var doc in requestSnap.docs) {
@@ -91,6 +60,11 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
       }
 
       for (var doc in rejectedSnap.docs) {
+        final id = doc.data()['ownerId'] as String?;
+        if (id != null && id.isNotEmpty) ownerIds.add(id);
+      }
+
+      for (var doc in verifiedSnap.docs) {
         final id = doc.data()['ownerId'] as String?;
         if (id != null && id.isNotEmpty) ownerIds.add(id);
       }
@@ -109,6 +83,43 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
           }
         }
       }
+
+      final verifiedVehicles = verifiedSnap.docs.map((doc) {
+        final d = doc.data();
+        final ownerId = d['ownerId'] ?? '';
+        final ownerName = ownerNames[ownerId] ?? tr('unknown');
+
+        return {
+          'id': doc.id,
+          'plate': d['plat'] ?? '',
+          'owner': ownerName,
+          'vehicleName': d['merk'] ?? '',
+          'color': "N/A",
+          'type': d['jenis'] ?? '',
+          'status': 'Approved',
+          'date': d['createdAt'] != null
+              ? (d['createdAt'] as Timestamp).toDate()
+              : null,
+          'kategori': d['kategori'] ?? '',
+          'keterangan': d['kategori'] ?? '',
+          'foto': d['fotoUrl'] ?? 'assets/car.png',
+          'ownerId': ownerId,
+          'submittedDate': d['createdAt'] != null
+              ? (d['createdAt'] as Timestamp).toDate().toString()
+              : '',
+          'createdAt': d['createdAt'] != null
+              ? DateFormat(
+                  'd MMM yyyy, HH:mm',
+                  LocalizationService().localeNotifier.value.languageCode,
+                ).format((d['createdAt'] as Timestamp).toDate())
+              : '-',
+        };
+      }).toList();
+
+      allVehicles.addAll(verifiedVehicles);
+
+      // 2. Fetch Requests from 'kendaraan_request' (Already done above but flow logic changed)
+      // We moved ownerId collection up. So we just proceed to processing.
 
       // Process Pending Requests
       final requestVehicles = requestSnap.docs
@@ -231,7 +242,7 @@ class _DaftarKendaraanAdminPageState extends State<DaftarKendaraanAdminPage> {
       // 2️⃣ Masukkan data ke collection plat_terdaftar (pakai field yg BENER)
       await firestore.collection('plat_terdaftar').add({
         'plat': data['plate'], // dari _loadVehicles
-        'merk': data['owner'], // merk = owner
+        'merk': data['vehicleName'], // merk = vehicleName (brand) not owner
         'jenis': data['type'], // jenis kendaraan
         'ownerId': data['ownerId'], // ownerId asli
         'createdAt': data['date'], // tanggal submit

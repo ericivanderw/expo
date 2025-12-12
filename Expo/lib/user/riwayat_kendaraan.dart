@@ -682,7 +682,9 @@ class _RiwayatKendaraanPageState extends State<RiwayatKendaraanPage> {
                   Icon(Icons.check_circle, size: 16, color: statusColor),
                   const SizedBox(width: 4),
                   Text(
-                    tr(statusText.toLowerCase()),
+                    statusText.toLowerCase() == 'keluar'
+                        ? tr('keluar_status')
+                        : tr(statusText.toLowerCase()),
                     style: TextStyle(
                       color: statusColor,
                       fontWeight: FontWeight.bold,

@@ -73,18 +73,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return Stack(
       children: [
         _buildHeader(),
-        Align(
-          alignment: Alignment.topCenter,
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 110),
-                _buildMenuUtama(context),
-                const SizedBox(height: 10),
-                _buildPengumuman(context),
-                const SizedBox(height: 80),
-              ],
-            ),
+        Positioned.fill(
+          child: Column(
+            children: [
+              const SizedBox(height: 130),
+              _buildMenuUtama(context),
+              const SizedBox(height: 20),
+              Expanded(child: _buildPengumuman(context)),
+            ],
           ),
         ),
       ],
@@ -119,7 +115,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           ),
           child: Padding(
             padding: EdgeInsets.only(
-              top: 40,
+              top: 60,
               left: horizontalPadding,
               right: horizontalPadding,
             ),
@@ -259,11 +255,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _buildPengumuman(BuildContext context) {
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Color(0xFFFEFEFE),
@@ -299,7 +297,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
                         fontSize: 14,
                         color: Colors.blueGrey,
                         fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
                       ),
                     ),
                   ),
@@ -311,38 +308,45 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
               const SizedBox(height: 16),
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('pengumuman')
-                    .where(
-                      'tanggal_kegiatan',
-                      isGreaterThanOrEqualTo: DateTime.now(),
-                    )
-                    .orderBy('tanggal_kegiatan')
-                    .limit(5)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(tr('error_loading_announcements')),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('pengumuman')
+                      .where(
+                        'tanggal_kegiatan',
+                        isGreaterThanOrEqualTo: DateTime.now(),
+                      )
+                      .orderBy('tanggal_kegiatan')
+                      .limit(5)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(tr('error_loading_announcements')),
+                      );
+                    }
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return Center(child: Text(tr('tidak_ada_pengumuman')));
+                    }
+
+                    return ListView.builder(
+                      padding: EdgeInsets.zero,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) {
+                        var data =
+                            snapshot.data!.docs[index].data()
+                                as Map<String, dynamic>;
+                        return _pengumumanItem(data);
+                      },
                     );
-                  }
-
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(child: Text(tr('tidak_ada_pengumuman')));
-                  }
-
-                  return Column(
-                    children: snapshot.data!.docs.map((doc) {
-                      var data = doc.data() as Map<String, dynamic>;
-                      return _pengumumanItem(data);
-                    }).toList(),
-                  );
-                },
+                  },
+                ),
               ),
             ],
           ),
@@ -361,17 +365,29 @@ class _AdminHomePageState extends State<AdminHomePage> {
           ).format(timestamp.toDate())
         : "-";
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DetailPengumumanPage(data: data),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailPengumumanPage(data: data),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-          );
-        },
+          ],
+        ),
         child: Row(
           children: [
             ClipRRect(

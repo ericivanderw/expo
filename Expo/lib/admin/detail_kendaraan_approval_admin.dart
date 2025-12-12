@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:expo/widgets/page_header.dart';
+import 'package:expo/widgets/appbarback.dart'; // Ensure this matches user's project structure
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:expo/services/localization_service.dart';
 import 'package:intl/intl.dart';
@@ -40,7 +40,7 @@ class _DetailKendaraanApprovalAdminPageState
 
       if (!docSnap.exists) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text("Error: Data tidak ditemukan (sudah dihapus?)"),
             backgroundColor: Colors.red,
           ),
@@ -129,19 +129,23 @@ class _DetailKendaraanApprovalAdminPageState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBarBack(
+        title: tr('detail_kendaraan'),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF795FFC), Color(0xFF7155FF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
       body: Stack(
         children: [
-          PageHeader(
-            title: tr('detail_kendaraan'),
-            showBackButton: false,
-            titleTopPadding: 16.0,
-          ),
-
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 120, 20, 100),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
+          // Main Content centered
+          Align(
+            alignment: Alignment.center,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -158,7 +162,7 @@ class _DetailKendaraanApprovalAdminPageState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // STATUS BOX
+                      // 1. Status & Time Badge at TOP
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -202,10 +206,9 @@ class _DetailKendaraanApprovalAdminPageState
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 24),
 
-                      // DETAIL BOXES
+                      // 2. Detail Fields (Bordered Style)
                       _buildDetailBox(
                         tr('nama_pemilik'),
                         widget.vehicle['owner'] ?? '-',
@@ -233,6 +236,7 @@ class _DetailKendaraanApprovalAdminPageState
                               .toLowerCase(),
                         ),
                       ),
+
                       if ((widget.vehicle['kategori'] ?? '')
                               .toString()
                               .toLowerCase() ==
@@ -262,8 +266,6 @@ class _DetailKendaraanApprovalAdminPageState
                           },
                         ),
                       ],
-
-                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -271,55 +273,7 @@ class _DetailKendaraanApprovalAdminPageState
             ),
           ),
 
-          // Back Button (Positioned on top to be clickable)
-          // Back Button (Positioned on top to be clickable)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                        left: 20,
-                        top: 38,
-                      ), // Matches PageHeader: 28 (padding) + 10 (button top)
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          alignment: Alignment.center,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFEFEFE),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.arrow_back_ios_new,
-                                color: Color(0xFF7A5AF8),
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // BUTTON APPROVE/REJECT
+          // Action Buttons
           if (_selectedStatus != 'approved' && _selectedStatus != 'rejected')
             Positioned(
               bottom: 0,
@@ -384,24 +338,35 @@ class _DetailKendaraanApprovalAdminPageState
     );
   }
 
-  // SAFE DETAIL BOX
   Widget _buildDetailBox(String label, dynamic value) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAEAEA),
+        color: const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 4),
-          Text(value?.toString() ?? '-', style: const TextStyle(fontSize: 16)),
+          Text(
+            value?.toString() ?? '-',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

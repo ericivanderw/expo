@@ -96,14 +96,13 @@ class _HomePageUserState extends State<HomePageUser> {
     return Stack(
       children: [
         _buildHeader(),
-        Align(
-          alignment: Alignment.topCenter,
+        Positioned.fill(
           child: Column(
             children: [
-              const SizedBox(height: 110),
+              const SizedBox(height: 130),
               _buildMenuUtama(context),
-              const SizedBox(height: 10),
-              SizedBox(height: 350, child: _buildPengumuman(context)),
+              const SizedBox(height: 20),
+              Expanded(child: _buildPengumuman(context)),
             ],
           ),
         ),
@@ -140,7 +139,7 @@ class _HomePageUserState extends State<HomePageUser> {
           ),
           child: Padding(
             padding: EdgeInsets.only(
-              top: 40,
+              top: 60,
               left: horizontalPadding,
               right: horizontalPadding,
             ),
@@ -247,7 +246,7 @@ class _HomePageUserState extends State<HomePageUser> {
                   Transform.translate(
                     offset: const Offset(-10, -10),
                     child: Image.asset(
-                      "logo.png",
+                      "assets/logo.png",
                       width: 100,
                       height: 100,
                       fit: BoxFit.contain,
@@ -351,11 +350,13 @@ class _HomePageUserState extends State<HomePageUser> {
 
   // ================= PENGUMUMAN =================
   Widget _buildPengumuman(BuildContext context) {
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Color(0xFFFEFEFE),
