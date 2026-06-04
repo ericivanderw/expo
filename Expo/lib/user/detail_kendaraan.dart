@@ -100,7 +100,6 @@ class DetailKendaraanPage extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
                   // Detail Content
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),

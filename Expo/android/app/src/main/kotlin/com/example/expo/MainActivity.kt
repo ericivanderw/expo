@@ -1,4 +1,4 @@
-package com.example.expo
+package com.dataverse.smartgate
 
 import io.flutter.embedding.android.FlutterActivity
 
